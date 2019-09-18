@@ -3,7 +3,7 @@ import struct
 import sys
 import os
 import ctypes as ct
-from learning_to_adapt.envs_vrep.wrapper_quad.vrepConst import *
+from wrapper_quad.vrepConst import *
 
 #load library
 libsimx = None

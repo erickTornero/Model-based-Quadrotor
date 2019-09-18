@@ -9,7 +9,7 @@ from .utility import GetFlatRotationMatrix
 # From environment
 import sys
 #sys.path.append('.')
-import learning_to_adapt.envs_vrep.wrapper_quad.vrep as vrep
+import wrapper_quad.vrep as vrep
 from typing import NoReturn
 import time
 from random import gauss
