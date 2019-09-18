@@ -44,16 +44,30 @@ class Runner:
 
             next_obs, rewards, dones, env_infos = self.vec_env.step(actions)
 
-            _   = [stack_.append(obs=next_ob, acts=act) for next_ob, act, stack_ in zip(next_obs, actions, stack_as)]
+            _   = [stack_.append(acts=act) for act, stack_ in zip(actions, stack_as)]
             # append new samples:
 
-
-            for idx, stack_, reward, done in zip(itertools.count(), stack_as, rewards, dones):
+            new_samples = 0
+            for idx, stack_, reward, done, next_ob in zip(itertools.count(), stack_as, rewards, dones, next_obs):
                 observation, action =   stack_.get()
                 running_paths[idx]['observations'].append(observation)
                 running_paths[idx]['actions'].append(action)
                 running_paths[idx]['rewards'].append(reward)
                 running_paths[idx]['dones'].append(done)
+                running_paths[idx]['next_obs'].append(next_ob)
+
+            if len(running_paths[idx]['rewards']) >= self.max_path_len:
+                paths.append(dict(
+                    observations=np.asarray(running_paths[idx]["observations"]),
+                    actions=np.asarray(running_paths[idx]["actions"]),
+                    rewards=np.asarray(running_paths[idx]["rewards"]),
+                    dones=np.asarray(running_paths[idx]["dones"]),
+                    next_obs=np.asarray(running_paths[idx]['next_obs'])
+                ))
+                new_samples += len(running_paths[idx]['rewards'])
+                running_paths[idx] = _get_empty_running_paths_dict()
+
+            _   =   [stack_.append(obs=next_ob) for next_ob, stack_ in zip(next_obs, stack_as)]
 
 
 
@@ -92,7 +106,7 @@ class StackStAct:
 
     
 def _get_empty_running_paths_dict():
-    return dict(observations=[], actions=[], rewards=[], dones=[])
+    return dict(observations=[], actions=[], rewards=[], dones=[], next_obs=[])
 
 
 # TODO: Hacer una prueba de ablacion para ver si mejora el resultado cuando no se toma
