@@ -21,7 +21,7 @@ class Dynamics(nn.Module):
         x   =   torch.tanh(self.layer1(obs))
         x   =   torch.tanh(self.layer2(x))
         x   =   torch.tanh(self.layer3(x))
-        x   =   torch.tanh(self.layer4(x))
+        x   =   self.layer4(x)
 
 
         return x
