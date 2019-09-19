@@ -1,5 +1,6 @@
 from multiprocessing import Process, Pipe
 import numpy as np
+import itertools
 
 class ParallelVrepEnv(object):
     """
@@ -26,8 +27,8 @@ class ParallelVrepEnv(object):
         self.remotes, self.work_remotes =   zip(*[Pipe() for _ in range(self.n_parallel)])
         seeds = np.random.choice(range(10**6), size=self.n_parallel, replace=False)   
         self.ps = [
-            Process(target=self.worker, args=(work_remote, remote, max_path_length, self.samples_per_proc, seed, port)) 
-            for work_remote, remote, seed, port in zip(self.work_remotes, self.remotes, seeds, ports)
+            Process(target=self.worker, args=(work_remote, remote, max_path_length, idremote, seed, port)) 
+            for work_remote, remote, idremote, seed, port in zip(self.work_remotes, self.remotes, itertools.count(), seeds, ports)
         ]
 
         for p in self.ps:
@@ -62,10 +63,17 @@ class ParallelVrepEnv(object):
         
         return observations
 
-    def worker(self, remote, parent_remote, max_path_length, samples_pp, seed, port_):
+    # Reset specifi remote
+    def reset_remote(self, index):
+        #print('remote trying to reset... from {}'.format(index))
+        self.remotes[index].send(('reset',None))
+        observation = np.asarray(self.remotes[index].recv(), np.float32)
         
+        return observation
+
+    def worker(self, remote, parent_remote, max_path_length, idremote, seed, port_):
+        #print('idremote', idremote)
         env = self.envClass(port=port_)
-        total_samples   =   samples_pp
 
         if port_ == self.ports[0]:
             self.env_ = env
@@ -81,7 +89,8 @@ class ParallelVrepEnv(object):
                 ts = ts + 1
                 if done or ts >= max_path_length:
                     done = True
-                    env.reset()
+                    #print('request Reset from> {}-{}, id>{}'.format(remote,ts, idremote))
+                    
                     ts = 0
                 """Send the next observation"""
                 remote.send((nextobs, rw, done, info))
