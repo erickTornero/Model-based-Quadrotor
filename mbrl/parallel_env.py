@@ -89,7 +89,7 @@ class ParallelVrepEnv(object):
                 ts = ts + 1
                 if done or ts >= max_path_length:
                     done = True
-                    #print('request Reset from> {}-{}, id>{}'.format(remote,ts, idremote))
+                    print('request Reset from> {}-{}, id>{}'.format(remote,ts, idremote))
                     
                     ts = 0
                 """Send the next observation"""

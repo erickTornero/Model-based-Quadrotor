@@ -47,17 +47,24 @@ class Runner:
 
             next_obs, rewards, dones, env_infos = self.vec_env.step(actions)
 
+            #from IPython.core.debugger import set_trace
+            #set_trace()
+            delta_obs   =   [stack_.get_last_state() for stack_ in stack_as]
+            delta_obs   =   [next_ob - delta_ob for delta_ob, next_ob in zip(delta_obs, next_obs)]
+
             _   = [stack_.append(acts=act) for act, stack_ in zip(actions, stack_as)]
             # append new samples:
 
             new_samples = 0
-            for idx, stack_, reward, done, next_ob in zip(itertools.count(), stack_as, rewards, dones, next_obs):
+            for idx, stack_, reward, done, next_ob, delta_ob in zip(itertools.count(), stack_as, rewards, dones, next_obs, delta_obs):
                 observation, action =   stack_.get()
                 running_paths[idx]['observations'].append(observation.flatten())
                 running_paths[idx]['actions'].append(action.flatten())
                 running_paths[idx]['rewards'].append(reward)
                 running_paths[idx]['dones'].append(done)
                 running_paths[idx]['next_obs'].append(next_ob)
+                running_paths[idx]['delta_obs'].append(delta_ob)
+
 
                 if len(running_paths[idx]['rewards']) >= self.max_path_len or done:
                     paths.append(dict(
@@ -65,7 +72,8 @@ class Runner:
                         actions=np.asarray(running_paths[idx]["actions"]),
                         rewards=np.asarray(running_paths[idx]["rewards"]),
                         dones=np.asarray(running_paths[idx]["dones"]),
-                        next_obs=np.asarray(running_paths[idx]['next_obs'])
+                        next_obs=np.asarray(running_paths[idx]['next_obs']),
+                        delta_obs=np.asarray(running_paths[idx]['delta_obs'])
                     ))
                     new_samples += len(running_paths[idx]['rewards'])
                     running_paths[idx] = _get_empty_running_paths_dict()
@@ -110,6 +118,9 @@ class StackStAct:
     def get(self):
         return np.asarray(self.states_stack), np.asarray(self.actions_stack)
     
+    def get_last_state(self):
+        return self.states_stack[-1]
+    
     def append(self, obs=None, acts=None):
         if obs is not None: self.states_stack.append(obs)
         if acts is not None: self.actions_stack.append(acts)
@@ -124,10 +135,10 @@ class StackStAct:
 
     
 def _get_empty_running_paths_dict():
-    return dict(observations=[], actions=[], rewards=[], dones=[], next_obs=[])
+    return dict(observations=[], actions=[], rewards=[], dones=[], next_obs=[], delta_obs=[])
 
 
-# TODO: Hacer una prueba de ablacion para ver si mejora el resultado cuando no se toma
+# TODO: Hacer una prueba de ablacion para ver si mejora el resultado next_obcuando no se toma
 #       En cuenta el estado inicial en el dataset de entrenamiento (cuando el stack no
 #       esa lleno)
 
