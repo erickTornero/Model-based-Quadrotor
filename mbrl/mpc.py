@@ -32,7 +32,7 @@ class RandomShooter:
         h   =   self.horizon
         c   =   self.candidates
         returns =   np.zeros((c, ))
-        set_trace()
+        #set_trace()
         actions =   self.get_random_actions(h * c).reshape((h, c,) + self.act_space.shape)
 
         actions =   actions.reshape((h, c, self.act_space.shape[0]))
@@ -43,11 +43,15 @@ class RandomShooter:
 
             self.batch_as.slide_action_stack(actions[t])
 
-            next_obs    =   self.dynamics.predict_next_obs(self.batch_as.get_tensor_torch())
+            next_obs    =   self.dynamics.predict_next_obs(self.batch_as.get_tensor_torch()).to('cpu')
+            next_obs    =   np.asarray(next_obs)
             rewards     =   self.env.reward(next_obs)
             returns     =   returns + self.discount**t*rewards
 
             self.batch_as.slide_state_stack(next_obs)
+        #idx_max_ret =   np.argmax(returns)
+        #idx_min_ret =   np.argmin(returns)
+        #print(returns[idx_min_ret], returns[idx_max_ret])
         return action_c[np.argmax(returns)]
 
 
@@ -116,4 +120,5 @@ class BatchStacks:
         return np.concatenate((self.state_batch_flat, self.action_batch_flat), axis=1)
     def get_tensor_torch(self):
         np_obs = self.get()
-        return torch.from_numpy(np_obs).to(self.device)
+        #return torch.from_numpy(np_obs).to(self.device)
+        return torch.tensor(np_obs, dtype=torch.float32, device=self.device)

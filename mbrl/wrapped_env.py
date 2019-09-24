@@ -10,7 +10,7 @@ class QuadrotorEnv(VREPQuad):
         targetpos   =   np.array([targetpos] * next_obs.shape[0])
 
         # TODO: Must change if observation space changes
-        currpos     =   next_obs[:, 9,12]
+        currpos     =   next_obs[:, 9:12]
 
         distance    =   targetpos - currpos
         distance    =   np.sqrt(np.sum(distance * distance, axis=1))

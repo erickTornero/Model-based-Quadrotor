@@ -7,7 +7,7 @@ class ParallelVrepEnv(object):
     Wrap multiples instances of vrep without loss the id connection
     """
     
-    def __init__(self, num_rollouts:int, max_path_length:int, ports:list, envClass):
+    def __init__(self, max_path_length:int, ports:list, envClass):
         """
         Initialize Pipes and Process
         """
@@ -18,10 +18,11 @@ class ParallelVrepEnv(object):
         self.env_       =   None
         self.envClass   =   envClass
 
+        self.num_rollouts   =   [0]*self.n_parallel
         #assert num_rollouts == self._num_envs
-        assert num_rollouts % self.n_parallel == 0
+        #assert num_rollouts % self.n_parallel == 0
 
-        self.samples_per_proc   =  max_path_length * (num_rollouts/self.n_parallel)
+        #self.samples_per_proc   =  max_path_length * (num_rollouts/self.n_parallel)
 
 
         self.remotes, self.work_remotes =   zip(*[Pipe() for _ in range(self.n_parallel)])
@@ -69,7 +70,13 @@ class ParallelVrepEnv(object):
         self.remotes[index].send(('reset',None))
         observation = np.asarray(self.remotes[index].recv(), np.float32)
         
+        self.num_rollouts[index]    += 1
         return observation
+    
+    def get_reset_nrollouts(self):
+        self.tmp            =   self.num_rollouts 
+        self.num_rollouts   = [0]*self.n_parallel
+        return self.tmp
 
     def worker(self, remote, parent_remote, max_path_length, idremote, seed, port_):
         #print('idremote', idremote)
