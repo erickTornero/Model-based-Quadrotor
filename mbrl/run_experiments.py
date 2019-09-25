@@ -11,6 +11,8 @@ import torch.optim as optim
 
 import numpy as np
 import os
+import joblib
+from utils.plots import *
 from IPython.core.debugger import set_trace
 
 """*****************************************
@@ -30,11 +32,11 @@ total_tsteps_per_run    =   10000
 batch_size              =   500
 n_epochs                =   100
 validation_percent      =   0.2
-learning_rate           =   1e-3
+learning_rate           =   1e-4
 
 """ General parameters """
 id_executor             =   'sample2'
-n_iterations            =   200
+n_iterations            =   24
 save_path               =   os.path.join('./data/', id_executor)
 
 """************************
@@ -65,6 +67,10 @@ print('--------- Creation of runner--------')
 
 runner = Runner(vecenv, env_, dyn, rs, max_path_length, total_tsteps_per_run)
 
+if not os.path.exists(save_path):
+    os.makedirs(save_path)
+
+mean_reward_maximum =   0.0
 for n_it in range(1, n_iterations+1):
     print('============================================')
     print('\t\t Iteration {} \t\t\t'.format(n_it))
@@ -76,21 +82,25 @@ for n_it in range(1, n_iterations+1):
     delta_obs       =   paths['delta_obs']
     total_rewards   =   paths['rewards']
     data_x          =   np.concatenate((observations, actions), axis=1)
-    trainer.fit(data_x, delta_obs)
+    tr_loss, vl_loss = trainer.fit(data_x, delta_obs)
     print('-------------Info {}-------------'.format(n_it))
     rolls_info      =   vecenv.get_reset_nrollouts()
     print('Rolls per env> {}, total rollouts {}'.format(rolls_info, sum(rolls_info)))
-    print('total time steps \t{}'.format(actions.shape[0]))
-    print('Reward mean:\t{}'.format(np.mean(total_rewards)))
-    print('Reward std: \t{}'.format(np.std(total_rewards)))
-    print('Reward min: \t{}'.format(np.min(total_rewards)))
-    print('Reward max: \t{}'.format(np.max(total_rewards)))
+    print('total time steps: \t{}'.format(actions.shape[0]))
+    print('Reward mean: \t\t{}'.format(np.mean(total_rewards)))
+    print('Reward  std: \t\t{}'.format(np.std(total_rewards)))
+    print('Reward  min: \t\t{}'.format(np.min(total_rewards)))
+    print('Reward  max: \t\t{}'.format(np.max(total_rewards)))
     
     print('Saving model ...')
-    torch.save(dyn.state_dict(), save_path)
+    if mean_reward_maximum < np.mean(total_rewards): 
+        mean_reward_maximum = np.mean(total_rewards)
+        torch.save(dyn.state_dict(), os.path.join(save_path, 'params_high.pkl'))
+    else:
+        torch.save(dyn.state_dict(), os.path.join(save_path, 'params.pkl'))
 
-
-print('running...')
+    joblib.dump(observations, os.path.join(save_path, 'observations_it_' + str(n_it)+'.pkl'))
+    plot_loss_per_iteration(tr_loss, vl_loss, os.path.join(save_path, 'loss_it_'+str(n_it)+'.png'))
 
 #paths = runner.run(random=False)
 #rolls = vecenv.get_reset_nrollouts()

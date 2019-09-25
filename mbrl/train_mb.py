@@ -29,7 +29,7 @@ class Trainer:
 
         """ Compute normalization mean and std """
         self.network.compute_normalization_stats(x_train)
-        
+
         x_train =   self.normalize(x_train)
         x_test  =   self.normalize(x_test)
 
@@ -38,7 +38,8 @@ class Trainer:
         n_batches_test  = y_test.shape[0]//self.batch_size if y_test.shape[0] >= self.batch_size else 1 
         # TODO: Last N<batch_size - 1 data in the epoch could not be taking into account in training
         #
-        
+        loss_validation =   []
+        loss_training   =   []
         for n_epoch in range(self.nepochs):
             """ Training Step """
             loss_per_epoch  =   []    
@@ -73,8 +74,14 @@ class Trainer:
                     Y_pred_test     =   self.network(X_tensor_test)
                     output_test     =   torch.mean(torch.sum((Y_tensor_test - Y_pred_test)**2, axis=1))
                     loss_per_val.append(output_test.item())
-            print('Loss epoch {} -> (train, test) loss-> ({:3.4f}, {:3.4f})'.format(n_epoch + 1, sum(loss_per_epoch)/len(loss_per_epoch), sum(loss_per_val)/len(loss_per_val)))
-
+            
+            loss_mean_training  =   sum(loss_per_epoch)/len(loss_per_epoch)
+            loss_mean_testing   =   sum(loss_per_val)/len(loss_per_val)
+            print('Loss epoch {} -> (train, test) loss-> ({:3.4f}, {:3.4f})'.format(n_epoch + 1, loss_mean_training, loss_mean_testing))
+            loss_training.append(loss_mean_training)
+            loss_validation.append(loss_mean_testing)
+        
+        return loss_training, loss_validation
     
 
     def normalize(self, x_input):
