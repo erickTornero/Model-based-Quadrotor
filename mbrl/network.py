@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import numpy as np
 
 from IPython.core.debugger import set_trace
 
@@ -17,6 +18,10 @@ class Dynamics(nn.Module):
         self.layer2         =   nn.Linear(250, 250)
         self.layer3         =   nn.Linear(250, 250)
         self.layer4         =   nn.Linear(250, self.output_shape)
+
+        self.mean_input     =   None
+        self.std_input      =   None
+        self.epsilon        =   None    
     
     def forward(self, obs):
         x   =   torch.tanh(self.layer1(obs))
@@ -26,17 +31,35 @@ class Dynamics(nn.Module):
 
         return x
     
-    def predict_next_obs(self, obs):
+    def predict_next_obs(self, obs, device):
         """
         Prediction of the next observation given current stack of obs.
         s_{t+1} = s_{t} + delta(next_obs)
+
+        The observation is passed normalized, must be denormalized in order to compute the next observation
         """
 
         with torch.no_grad():
             if not self.sthocastic:
                 x   =   self.forward(obs)
-                x   =   obs[:, self.state_shape * (self.stack_n - 1): self.state_shape * self.stack_n] + x[:, :self.state_shape]
+                #x   =   obs[:, self.state_shape * (self.stack_n - 1): self.state_shape * self.stack_n] + x[:, :self.state_shape]
+                x   =   self.denormalize_state(obs, self.state_shape*(self.stack_n - 1), self.state_shape * self.stack_n, device) + x[:, :self.state_shape]
             else:
                 pass
 
         return x
+    
+    def compute_normalization_stats(self, obs):
+        self.mean_input =   np.mean(obs, axis=0)
+        self.std_input  =   np.std(obs, axis=0)
+        self.epsilon    =   1e-6
+    
+    def denormalize_state(self, obs, i_index, e_index, device):
+        """ Denormalize a portion of the state """
+        mean_arr        =   torch.tensor(self.mean_input[i_index:e_index], dtype=torch.float32, device=device)
+        std_arr         =   torch.tensor(self.std_input[i_index:e_index],  dtype=torch.float32, device=device)
+
+        x   =   obs[:, i_index:e_index] * (std_arr + self.epsilon) + mean_arr
+        return x
+
+    

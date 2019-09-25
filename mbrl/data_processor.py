@@ -17,7 +17,22 @@ class DataProcessor:
         sample_data['actions']      =   np.vstack([path['actions'] for path in paths])
         sample_data['delta_obs']      =   np.vstack([path['delta_obs'] for path in paths])
 
+        sample_data['rewards']      =   self.reward_process([path['rewards'] for path in paths])
+
         return sample_data
+    
+    def reward_process(self, rewards):
+        """
+            Return the total rewards per Rollout
+        """
+        total_rewards   =   np.array([np.sum(r, axis=0) for r in rewards])
+        #mean_rewards    =   np.mean(total_rewards)
+        #std_rewards     =   np.std(total_rewards)
+        #min_reward      =   np.min(total_rewards)
+        #max_reward      =   np.max(total_rewards)
+
+        return total_rewards
+
 
 # TODO: Hacer una prueba de ablacion para ver si mejora el resultado next_obcuando no se toma
 #       En cuenta el estado inicial en el dataset de entrenamiento (cuando el stack no

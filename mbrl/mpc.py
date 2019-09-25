@@ -42,8 +42,12 @@ class RandomShooter:
                 action_c    =   actions[t]
 
             self.batch_as.slide_action_stack(actions[t])
-
-            next_obs    =   self.dynamics.predict_next_obs(self.batch_as.get_tensor_torch()).to('cpu')
+            """ Normalize input """
+            obs_flat    =   self.batch_as.get()
+            obs_flat    =   self.normalize_(obs_flat)
+            obs_tensor  =   torch.tensor(obs_flat, dtype=torch.float32, device=self.device)
+            
+            next_obs    =   self.dynamics.predict_next_obs(obs_tensor, self.device).to('cpu')
             next_obs    =   np.asarray(next_obs)
             rewards     =   self.env.reward(next_obs)
             returns     =   returns + self.discount**t*rewards
@@ -57,12 +61,18 @@ class RandomShooter:
 
     def get_random_actions(self, n):
         return np.random.uniform(low=self.act_space.low, high=self.act_space.high, size=(n,)+self.act_space.shape)
-
+    
+    def normalize_(self, obs):
+        assert self.dynamics.mean_input is not None
+        return (obs - self.dynamics.mean_input)/(self.dynamics.std_input + self.dynamics.epsilon)
+    def denormalize_(self, obs):
+        assert self.dynamics.mean_input is not None
+        return obs * (self.dynamics.std_input + self.dynamics.epsilon) + self.dynamics.mean_input
         
 
 class BatchStacks:
     """
-        Append a batch of state-actions: (StackStAct)
+        Append a batch of state-actions: (StackStAct)get
         Optimized, working with np.ndarray data-type
         ans with = are not really copy, just share memory
     """
