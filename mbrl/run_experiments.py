@@ -37,8 +37,12 @@ validation_percent      =   0.2
 learning_rate           =   1e-4
 
 """ General parameters """
-id_executor             =   'sample3'
-n_iterations            =   36
+id_executor             =   'sample5'
+n_iterations            =   128
+
+""" Dynamics parameters """
+sthocastic              =   False
+nstack                  =   4
 
 save_path               =   os.path.join('./data/', id_executor)
 
@@ -55,7 +59,7 @@ vecenv=ParallelVrepEnv(ports=[19999, 20001,21001,22001], max_path_length=250, en
 state_shape= env_.observation_space.shape
 action_shape=env_.action_space.shape
 
-dyn = Dynamics(state_shape, action_shape, stack_n=4, sthocastic=False)
+dyn = Dynamics(state_shape, action_shape, stack_n=nstack, sthocastic=False)
 
 
 dyn = dyn.to(device)
@@ -92,7 +96,14 @@ for n_it in range(1, n_iterations+1):
     if mean_reward_maximum < mean_reward:
         print('Saving new highest reward') 
         mean_reward_maximum = mean_reward
-        torch.save(dyn.state_dict(), os.path.join(save_path, 'params_high.pkl'))
+        torch.save({
+            'n_it': n_it,
+            'model_state_dict':dyn.state_dict(),
+            'mean_input': dyn.mean_input,
+            'std_input': dyn.std_input,
+            'epsilon': dyn.epsilon
+            }, os.path.join(save_path, 'params_high.pkl'))
+        #torch.save(dyn.state_dict(), os.path.join(save_path, 'params_high.pkl'))
 
     tr_loss, vl_loss = trainer.fit(data_x, delta_obs)
     print('-------------Info {}-------------'.format(n_it))
@@ -105,7 +116,13 @@ for n_it in range(1, n_iterations+1):
     print('Reward  max: \t\t{}'.format(np.max(total_rewards)))
     
     print('Saving model ...')
-    torch.save(dyn.state_dict(), os.path.join(save_path, 'params.pkl'))
+    torch.save({
+        'n_it': n_it,
+        'model_state_dict':dyn.state_dict(),
+        'mean_input': dyn.mean_input,
+        'std_input': dyn.std_input,
+        'epsilon': dyn.epsilon
+        }, os.path.join(save_path, 'params.pkl'))
 
     joblib.dump(observations, os.path.join(save_path, 'observations_it_' + str(n_it)+'.pkl'))
     joblib.dump(total_rewards, os.path.join(save_path, 'rewards_it_'+str(n_it)+'.pkl'))

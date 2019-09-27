@@ -19,7 +19,9 @@ class RandomShooter:
 
         self.dynamics   =   dynamics
         self.device     =   device
-        self.batch_as   =   BatchStacks(self.act_space.shape, self.obs_space.shape, 4, self.candidates, device)
+
+        self.stack_n    =   self.dynamics.stack_n
+        self.batch_as   =   BatchStacks(self.act_space.shape, self.obs_space.shape, self.stack_n, self.candidates, device)
 
     def get_action(self, obs_):
         """

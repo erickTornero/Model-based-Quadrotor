@@ -43,7 +43,7 @@ class Runner:
         # Reset environments
         #obses   =   np.asarray(self.vec_env.reset())
         obses   =   self.vec_env.reset()
-        stack_as    =   [StackStAct(self.env_.action_space.shape, self.env_.observation_space.shape, n=4, init_st=ob) for ob in obses]
+        stack_as    =   [StackStAct(self.env_.action_space.shape, self.env_.observation_space.shape, n=self.nstack, init_st=ob) for ob in obses]
         
         # TQDM bar
         pbar    =   tqdm(total=self.total_samples)
