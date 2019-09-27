@@ -59,7 +59,7 @@ vecenv=ParallelVrepEnv(ports=[19999, 20001,21001,22001], max_path_length=250, en
 state_shape= env_.observation_space.shape
 action_shape=env_.action_space.shape
 
-dyn = Dynamics(state_shape, action_shape, stack_n=nstack, sthocastic=False)
+dyn = Dynamics(state_shape, action_shape, stack_n=nstack, sthocastic=sthocastic)
 
 
 dyn = dyn.to(device)
