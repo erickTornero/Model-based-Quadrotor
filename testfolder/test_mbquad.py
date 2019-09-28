@@ -4,27 +4,37 @@ from mbrl.mpc import RandomShooter
 
 from utils.rolls import rollouts
 import os
+import json
+import glob
+
 import torch
 
 from IPython.core.debugger import set_trace
 
-restore_folder='./data/sample5/'
-env_    =   QuadrotorEnv(port=28001)
+id_execution_test   =   '1'
+
+restore_folder  ='./data/sample5/'
+save_paths_dir  =   os.path.join(restore_folder, 'rolls'+id_execution_test)
+
+env_        =   QuadrotorEnv(port=28001)
 state_shape =   env_.observation_space.shape
 action_shape=   env_.action_space.shape
 
-horizon     =   20
-candidates  =   1500
-discount    =   0.99
-nstack      =   4
-max_path_length =   250
-nrollouts   =   10
+config      =   {
+    "horizon"           :   20,
+    "candidates"        :   1500,
+    "discount"          :   0.99,
+    "nstack"            :   4,
+    "max_path_length"   :   250,
+    "nrollouts"         :   5,
+    "sthocastic"        :   False
+}
 
 device      =   torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 
-dynamics    =   Dynamics(state_shape, action_shape, stack_n=nstack, sthocastic=False)
-rs          =   RandomShooter(horizon, candidates, env_, dynamics, device, discount)
+dynamics    =   Dynamics(state_shape, action_shape, stack_n=config['nstack'], sthocastic=config['sthocastic'])
+rs          =   RandomShooter(config['horizon'], config['candidates'], env_, dynamics, device, config['discount'])
 checkpoint  =   torch.load(os.path.join(restore_folder, 'params_high.pkl'))
 dynamics.load_state_dict(checkpoint['model_state_dict'])
 
@@ -34,6 +44,16 @@ dynamics.epsilon    =   checkpoint['epsilon']
 
 dynamics.to(device)
 
+if save_paths_dir is not None:
+    configsfiles    =   glob.glob(os.path.join(save_paths_dir,'*.json'))
+    files_paths     =   glob.glob(os.path.join(save_paths_dir,'*.pkl'))
 
+    assert len(configsfiles) ==0, 'Already the folder is busy, select other'
+    assert len(files_paths)==0, 'Already the folder is busy, select another one'
+    if not os.path.exists(save_paths_dir):
+        os.makedirs(save_paths_dir)
+    
+    with open(os.path.join(save_paths_dir, 'experiment_config.json'), 'w') as fp:
+        json.dump(config, fp, indent=2)
 
-rollouts(dynamics, env_, rs, nrollouts, max_path_length)
+rollouts(dynamics, env_, rs, config['nrollouts'], config['max_path_length'], save_paths_dir)

@@ -74,8 +74,9 @@ print('--------- Creation of runner--------')
 
 runner = Runner(vecenv, env_, dyn, rs, max_path_length, total_tsteps_per_run)
 
-if not os.path.exists(save_path):
-    os.makedirs(save_path)
+
+assert not os.path.exists(save_path), 'Already this folder is busy, select other'
+os.makedirs(save_path)
 
 writer = SummaryWriter()
 mean_reward_maximum =   0.0
