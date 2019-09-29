@@ -13,8 +13,9 @@ from IPython.core.debugger import set_trace
 
 id_execution_test   =   '1'
 
-restore_folder  ='./data/sample5/'
+restore_folder  ='./data/sample6/'
 save_paths_dir  =   os.path.join(restore_folder, 'rolls'+id_execution_test)
+#save_paths_dir  =   None
 
 env_        =   QuadrotorEnv(port=28001)
 state_shape =   env_.observation_space.shape
@@ -24,9 +25,9 @@ config      =   {
     "horizon"           :   20,
     "candidates"        :   1500,
     "discount"          :   0.99,
-    "nstack"            :   4,
+    "nstack"            :   2,
     "max_path_length"   :   250,
-    "nrollouts"         :   5,
+    "nrollouts"         :   20,
     "sthocastic"        :   False
 }
 

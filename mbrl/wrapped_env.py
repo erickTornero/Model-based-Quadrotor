@@ -12,9 +12,15 @@ class QuadrotorEnv(VREPQuad):
         # TODO: Must change if observation space changes
         currpos     =   next_obs[:, 9:12]
 
-        distance    =   targetpos - currpos
+        #distance    =   targetpos - currpos
+        distance    =   currpos
         distance    =   np.sqrt(np.sum(distance * distance, axis=1))
 
         reward      =   4.0 - 1.25 * distance
 
+        #print(reward)
         return  reward
+
+    def set_targetpos(self, tpos:np.ndarray):
+        assert tpos.shape[0]    ==  3
+        self.targetpos  =   tpos

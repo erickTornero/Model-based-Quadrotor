@@ -111,7 +111,8 @@ class VREPQuad(gym.Env):
         diff_close      =   np.sqrt((convergence_dist * convergence_dist).sum())
         self.counterclose = (self.counterclose + 1) if diff_close < self.distance_close else 0
 
-        reward          =   self.targetpos - position
+        #reward          =   self.targetpos - position
+        reward          =   position
         distance        =   np.sqrt((reward * reward).sum())
         reward          =   4.0 -1.25 * distance 
         #if distance > 3.2:
@@ -268,6 +269,10 @@ class VREPQuad(gym.Env):
         #rowdata         =   np.append(rowdata, velocity[1])
         #rowdata         =   np.append(rowdata, velocity[2])
 
+        """ Test relative position """
+        position        =   position  - self.targetpos
+        #print(position)
+
 
         return (RotMat, np.asarray(position), np.asarray(velocity[1]), np.asarray(velocity[2]))        
 
@@ -288,7 +293,7 @@ class VREPQuad(gym.Env):
             respecto    =   np.zeros(3, dtype=np.float32)
 
         max_radius_per_axis =   np.sqrt(max_radius * max_radius / 3.0)
-        sampledpos          =   np.random.uniform(-max_radius_per_axis, max_radius_per_axis, 3)
+        sampledpos          =   np.random.uniform(-max_radius_per_axis, max_radius_per_axis, 3) + respecto
         sampledangle        =   self._getGaussVectorOrientation()
 
         return sampledpos, sampledangle

@@ -101,36 +101,49 @@ def plot_pos_over_time(fold, id_ex, max_path_length=250, list_paths=None):
     paths           =   joblib.load(path_name)
     list_paths  =   list_paths if list_paths is not None else list(np.arange(len(paths)))
 
-    index_start_pos =   63
+    #index_start_pos =   63
+    index_start_pos =   27
     plt.figure(figsize=(12, 4))
     for i_path in list_paths:
         data    =   paths[i_path]['observation']
+        targets =   paths[i_path]['target']
 
         """ Plot distributions of positions in X-Y, X-Z, Y-Z"""
         x_data   =   data[:max_path_length, index_start_pos]
         y_data   =   data[:max_path_length, index_start_pos + 1]
         z_data   =   data[:max_path_length, index_start_pos + 2]
 
+        """target data"""
+        x_target    =   targets[:max_path_length, 0]
+        y_target    =   targets[:max_path_length, 1]
+        z_target    =   targets[:max_path_length, 2]
+
+        x_data  =   x_data + x_target
+        y_data  =   y_data + y_target
+        z_data  =   z_data + z_target
         """
             PLOT X POS
         """
         plt.subplot(1, 3, 1)
         plt.plot(np.arange(len(x_data)), x_data, color='red')
+        plt.plot(np.arange(len(x_target)), x_target, '-', color='olive',linestyle='dashed')
         """
             PLOT Y POS
         """
         plt.subplot(1, 3, 2)
         plt.plot(np.arange(len(y_data)), y_data, color='blue')
+        plt.plot(np.arange(len(y_target)), y_target, '-', color='olive',linestyle='dashed')
         """
             PLOT Z POS
         """
         plt.subplot(1, 3, 3)
         plt.plot(np.arange(len(z_data)), z_data, color='gray')
+        plt.plot(np.arange(len(z_target)), z_target, '-', color='olive',linestyle='dashed')
 
     axis    =   ['X','Y','Z']    
     for i in range(3):
         plt.subplot(1, 3, i+1)
-        plt.plot(np.arange(max_path_length), max_path_length * [0.0], '-', color='olive', linestyle='dashed')
+        #plt.plot(np.arange(max_path_length), max_path_length * [0.0], '-', color='olive', linestyle='dashed')
         plt.xlabel('timestep')
         plt.ylabel('position (m)')
 
@@ -147,101 +160,5 @@ def plot_pos_over_time(fold, id_ex, max_path_length=250, list_paths=None):
     plt.show()
 
 # Example of its usage
-plot_pos_over_time('./data/sample5/', '1', list_paths=[2])
+plot_pos_over_time('./data/sample6/', '1', list_paths=[4])
 
-
-
-    #indexes = index_selected if (len(index_selected) > 0) else list(np.arange(total_rollouts))
-#
-#
-    #x_  =   []
-    #y_  =   []
-    #z_  =   []
-    #ndatapointsnax = 0
-    #for index in indexes:
-    #    # Return the data at given index
-    #    data = data_pos[index]
-    #    to_ =   data.shape[0] if max_timesteps is None else max_timesteps 
-    #    x_.append(data[:to_, 0])
-    #    y_.append(data[:to_, 1])
-    #    z_.append(data[:to_, 2])
-    #    if to_ > ndatapointsnax: ndatapointsnax=to_
-#
-    #plt.figure(figsize=(12, 4))
-    #plt.tight_layout()
-#
-    #"""
-    #    PLOT X POS
-    #"""
-#
-    #plt.subplot(1, 3, 1)
-    #for i in range(len(indexes)):
-    #    plt.plot(np.arange(len(x_[i])), x_[i], color='red')
-#
-    ## Desired position in X:
-    #plt.plot(np.arange(ndatapointsnax), ndatapointsnax * [0.0], '-', color='olive', linestyle='dashed')
-#
-    #plt.xlabel('timestep')
-    #plt.ylabel('position (m)')
-#
-    #plt.title('Position in X axis')
-    #plt.xlim(0,150)
-    #plt.ylim(-2,2)
-    #plt.grid(which='major', color='#CCCCCC', linestyle='--')
-    #plt.grid(which='minor', color='#CCCCCC', linestyle=':')
-    ##plt.axis('off')
-    ##plt.subplots_adjust(wspace=0.2)
-    ##plt.legend(['roll '+ str(idx) for idx in indexes])
-#
-    ##plt.show()
-    #"""
-    #    PLOT Y POS
-    #"""
-#
-    #plt.subplot(1, 3, 2)
-    #for i in range(len(indexes)):
-    #    plt.plot(np.arange(len(y_[i])), y_[i], color='blue')
-#
-    ## Desired position in X:
-    #plt.plot(np.arange(ndatapointsnax), ndatapointsnax * [0.0], '-', color='olive', linestyle='dashed')
-#
-    #plt.xlabel('timestep')
-    ##plt.ylabel('position (m)')
-#
-    #plt.title('Position in Y axis')
-    #plt.xlim(0,150)
-    #plt.ylim(-2,2)
-    #plt.grid(which='major', color='#CCCCCC', linestyle='--')
-    #plt.grid(which='minor', color='#CCCCCC', linestyle=':')
-#
-    #plt.grid(True)
-#
-    ##plt.legend(['roll '+ str(idx) for idx in indexes])
-    ##plt.subplots_adjust(wspace=0.5)
-    ##plt.show()
-    #"""
-    #    PLOT Z POS
-    #"""
-    #plt.subplot(1, 3, 3)
-    #for i in range(len(indexes)):
-    #    plt.plot(np.arange(len(z_[i])), z_[i], 'gray')
-#
-    ## Desired position in X:
-    #plt.plot(np.arange(ndatapointsnax), ndatapointsnax * [0.0], '-', color='olive', linestyle='dashed')
-#
-    #plt.xlabel('timestep')
-    ##plt.ylabel('position (m)')
-#
-    #plt.title('Position in Z axis')
-    #plt.xlim(0,150)
-    #plt.ylim(-2,2)
-    #plt.grid(which='major', color='#CCCCCC', linestyle='--')
-    #plt.grid(which='minor', color='#CCCCCC', linestyle=':')
-    #plt.grid(True)
-    ##plt.legend(['roll '+ str(idx) for idx in indexes])
-    ##plt.subplots_adjust(wspace=0.5)
-#
-#
-    ##plt.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.1)
-    #plt.tight_layout()
-    #plt.show()
