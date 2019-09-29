@@ -12,39 +12,47 @@ import torch.optim as optim
 import numpy as np
 import os
 import joblib
+import json
+
 from utils.plots import *
 from IPython.core.debugger import set_trace
 
 from tensorboardX import SummaryWriter
 
+config  =   {
+    # General parameters #
+    "id_executor"           :   'sample7',
+    "n_iterations"          :   128,
+
+    # MPC Controller - Random Shooting #
+    
+    "horizon"               :   15,
+    "candidates"            :   1000,
+    "discount"              :   0.99,
+
+    # Environment Setting & runner #
+    
+    "max_path_length"       :   250,
+    "total_tsteps_per_run"  :   10000,
+
+    # Training Parameters #
+    
+    "batch_size"            :   500,
+    "n_epochs"              :   100,
+    "validation_percent"    :   0.2,
+    "learning_rate"         :   1e-4,
+
+    # Dynamics parameters #
+    "sthocastic"            :   False,
+    "nstack"                :   1
+}
 """*****************************************
     Hyper-Parameters Settings
 ********************************************
 """
-""" MPC Controller - Random Shooting """
-horizon     =   15
-candidates  =   1000
-discount    =   0.99
 
-""" Environment Setting & runner """
-max_path_length         =   250
-total_tsteps_per_run    =   10000
 
-""" Training Parameters """
-batch_size              =   500
-n_epochs                =   100
-validation_percent      =   0.2
-learning_rate           =   1e-4
-
-""" General parameters """
-id_executor             =   'sample5'
-n_iterations            =   128
-
-""" Dynamics parameters """
-sthocastic              =   False
-nstack                  =   4
-
-save_path               =   os.path.join('./data/', id_executor)
+save_path               =   os.path.join('./data/', config['id_executor'])
 
 """************************
     Objects for training
@@ -55,32 +63,42 @@ device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 env_ = QuadrotorEnv(port=27001) # 28
 #vecenv=ParallelVrepEnv(ports=[25001,28001], max_path_length=250, envClass=QuadrotorEnv)
-vecenv=ParallelVrepEnv(ports=[19999, 20001,21001,22001], max_path_length=250, envClass=QuadrotorEnv)
+vecenv=ParallelVrepEnv(ports=[19999, 20001,21001,22001], max_path_length=config['max_path_length'], envClass=QuadrotorEnv)
 state_shape= env_.observation_space.shape
 action_shape=env_.action_space.shape
 
-dyn = Dynamics(state_shape, action_shape, stack_n=nstack, sthocastic=sthocastic)
+dyn = Dynamics(state_shape, action_shape, stack_n=config['nstack'], sthocastic=config['sthocastic'])
 
 
 dyn = dyn.to(device)
 
-optimizer               =   optim.Adam(lr=learning_rate, params=dyn.parameters())
+optimizer               =   optim.Adam(lr=config['learning_rate'], params=dyn.parameters())
 
-rs = RandomShooter(horizon, candidates, env_, dyn, device, discount)
+rs = RandomShooter(config['horizon'], config['candidates'], env_, dyn, device, config['discount'])
 
-trainer =   Trainer(dyn, batch_size, n_epochs, validation_percent, learning_rate, device, optimizer)
+trainer =   Trainer(dyn, config['batch_size'], config['n_epochs'], config['validation_percent'], config['learning_rate'], device, optimizer)
 
 print('--------- Creation of runner--------')
 
-runner = Runner(vecenv, env_, dyn, rs, max_path_length, total_tsteps_per_run)
+runner = Runner(vecenv, env_, dyn, rs, config['max_path_length'], config['total_tsteps_per_run'])
 
 
 assert not os.path.exists(save_path), 'Already this folder is busy, select other'
 os.makedirs(save_path)
 
+with open('config_train.json','w') as fp:
+    json.dump(config, fp, indent=2)
+
+observations_path   =   os.path.join(save_path, 'observations')
+rewards_path        =   os.path.join(save_path, 'rewards')
+images_path         =   os.path.join(save_path, 'images')
+os.makedirs(observations_path)
+os.makedirs(rewards_path)
+os.makedirs(images_path)
+
 writer = SummaryWriter()
 mean_reward_maximum =   0.0
-for n_it in range(1, n_iterations+1):
+for n_it in range(1, config['n_iterations']+1):
     print('============================================')
     print('\t\t Iteration {} \t\t\t'.format(n_it))
     print('============================================')
@@ -125,9 +143,9 @@ for n_it in range(1, n_iterations+1):
         'epsilon': dyn.epsilon
         }, os.path.join(save_path, 'params.pkl'))
 
-    joblib.dump(observations, os.path.join(save_path, 'observations_it_' + str(n_it)+'.pkl'))
-    joblib.dump(total_rewards, os.path.join(save_path, 'rewards_it_'+str(n_it)+'.pkl'))
-    plot_loss_per_iteration(tr_loss, vl_loss, os.path.join(save_path, 'loss_it_'+str(n_it)+'.png'))
+    joblib.dump(observations, os.path.join(observations_path, 'observations_it_' + str(n_it)+'.pkl'))
+    joblib.dump(total_rewards, os.path.join(rewards_path, 'rewards_it_'+str(n_it)+'.pkl'))
+    plot_loss_per_iteration(tr_loss, vl_loss, os.path.join(images_path, 'loss_it_'+str(n_it)+'.png'))
 
 #paths = runner.run(random=False)
 #rolls = vecenv.get_reset_nrollouts()

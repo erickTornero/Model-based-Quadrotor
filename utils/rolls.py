@@ -16,6 +16,9 @@ def rollouts(dynamics:Dynamics, env:QuadrotorEnv, mpc:RandomShooter, n_rolls=20,
     if save_paths is not None:
         pkls    =   glob.glob(os.path.join(save_paths, '*.pkl'))
         assert len(pkls) == 0, "Selected directory is busy, please select other"
+        log_path    =   os.path.join(save_paths, 'log.txt')
+        texto   =   'Prepare for save paths in "{}"\n'.format(save_paths)
+
         print('Prepare for save paths in "{}"'.format(save_paths))
         
     #env.set_targetpos(np.random.uniform(-1.0, 1.0, size=(3,)))
@@ -38,7 +41,7 @@ def rollouts(dynamics:Dynamics, env:QuadrotorEnv, mpc:RandomShooter, n_rolls=20,
             if timestep == 120:
                 next_target_pos  = np.zeros(3, dtype=np.float32)
                 env.set_targetpos(next_target_pos)
-                
+
             action = mpc.get_action(stack_as)
                
             next_obs, reward, done, env_info =   env.step(action)
@@ -71,10 +74,13 @@ def rollouts(dynamics:Dynamics, env:QuadrotorEnv, mpc:RandomShooter, n_rolls=20,
             cum_reward  +=  reward
             timestep += 1
 
-
+        newtexto   = '{} rollout, reward-> {} in {} timesteps'.format(i_roll, cum_reward, timestep)
         if save_paths is not None:
             joblib.dump(paths, os.path.join(save_paths, 'paths.pkl'))
+            with open(log_path, 'w') as fp:
+                texto   +=  newtexto + '\n'
+                fp.write(texto)
 
 
-        print('{} rollout, reward-> {} in {} timesteps'.format(i_roll, cum_reward, timestep))
+        print(newtexto)
 
