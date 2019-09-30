@@ -21,7 +21,7 @@ from tensorboardX import SummaryWriter
 
 config  =   {
     # General parameters #
-    "id_executor"           :   'sample7',
+    "id_executor"           :   'sample8',
     "n_iterations"          :   128,
 
     # MPC Controller - Random Shooting #
@@ -34,6 +34,7 @@ config  =   {
     
     "max_path_length"       :   250,
     "total_tsteps_per_run"  :   10000,
+    "reward_type"           :   'type3',
 
     # Training Parameters #
     
@@ -61,9 +62,9 @@ save_path               =   os.path.join('./data/', config['id_executor'])
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-env_ = QuadrotorEnv(port=27001) # 28
+env_ = QuadrotorEnv(port=27001, reward_type=config['reward_type']) # 28
 #vecenv=ParallelVrepEnv(ports=[25001,28001], max_path_length=250, envClass=QuadrotorEnv)
-vecenv=ParallelVrepEnv(ports=[19999, 20001,21001,22001], max_path_length=config['max_path_length'], envClass=QuadrotorEnv)
+vecenv=ParallelVrepEnv(ports=[19999, 20001,21001,22001], max_path_length=config['max_path_length'], envClass=QuadrotorEnv, reward_type=config['reward_type'])
 state_shape= env_.observation_space.shape
 action_shape=env_.action_space.shape
 
@@ -86,7 +87,7 @@ runner = Runner(vecenv, env_, dyn, rs, config['max_path_length'], config['total_
 assert not os.path.exists(save_path), 'Already this folder is busy, select other'
 os.makedirs(save_path)
 
-with open('config_train.json','w') as fp:
+with open(os.path.join(save_path, 'config_train.json'),'w') as fp:
     json.dump(config, fp, indent=2)
 
 observations_path   =   os.path.join(save_path, 'observations')

@@ -5,6 +5,8 @@ import numpy as np
 import glob
 import matplotlib.pyplot as plt
 
+import json
+
 
 def compute_restore_file(fold_path, id_str):
     """ Return the path direction to the file of paths if it exists else return: None
@@ -42,7 +44,11 @@ def plot_trajectory(fold, id_ex, list_paths=None):
     nfigures    =   len(list_paths)
     #set_trace()
     plt.figure(figsize=(12,4))
-    index_start_pos =   63 # Index where position starts
+
+    with open(os.path.join(fold, 'rolls'+id_ex+'/experiment_config.json'), 'r') as fp:
+        config_experiment   =   json.load(fp)
+
+    index_start_pos =   18*(config_experiment['nstack']-1) + 9# Index where position starts
     for i, i_path  in enumerate(list_paths):
         #plt.subplot(nfigures, 3, i + 1)
         
@@ -102,7 +108,12 @@ def plot_pos_over_time(fold, id_ex, max_path_length=250, list_paths=None):
     list_paths  =   list_paths if list_paths is not None else list(np.arange(len(paths)))
 
     #index_start_pos =   63
-    index_start_pos =   27
+    #index_start_pos =   27
+    with open(os.path.join(fold, 'rolls'+id_ex+'/experiment_config.json'), 'r') as fp:
+        config_experiment   =   json.load(fp)
+        
+    index_start_pos =   18*(config_experiment['nstack']-1) + 9
+
     plt.figure(figsize=(12, 4))
     for i_path in list_paths:
         data    =   paths[i_path]['observation']
@@ -160,5 +171,47 @@ def plot_pos_over_time(fold, id_ex, max_path_length=250, list_paths=None):
     plt.show()
 
 # Example of its usage
-plot_pos_over_time('./data/sample6/', '1', list_paths=[4])
+plot_pos_over_time('./data/sample6/', '4', list_paths=[2])
+
+def plot_ang_velocity(fold, id_ex, list_paths=None):
+    path_name   =   compute_restore_file(fold, id_ex)
+    assert path_name is not None, 'Not file of paths founded'
+    
+    paths       =   joblib.load(path_name)
+    list_paths  =   list_paths if list_paths is not None else list(np.arange(len(paths)))
+
+    nfigures    =   len(list_paths)
+    #set_trace()
+    plt.figure(figsize=(12,4))
+    with open(os.path.join(fold, 'rolls'+id_ex+'/experiment_config.json'), 'r') as fp:
+        config_experiment   =   json.load(fp)
+        
+    index_start_pos =   18*(config_experiment['nstack']-1) + 15
+
+    for i_path in list_paths:
+        data    =   paths[i_path]['observation']
+
+        """ Plot distributions of positions in X-Y, X-Z, Y-Z"""
+        vx_data   =   data[:, index_start_pos]
+        vy_data   =   data[:, index_start_pos + 1]
+        vz_data   =   data[:, index_start_pos + 2]
+
+        """ Distribution X-Y"""
+        plt.subplot(1, 3, 1)
+        plt.scatter(vx_data, vy_data, alpha=0.6, marker='o', s=5)
+        
+        #plt.xlim(-3.2, 3.2)
+        #plt.ylim(-3.2, 3.2)
+
+        """ Distribution X-Z"""
+        plt.subplot(1, 3, 2)
+        plt.scatter(vx_data, vz_data, alpha=0.6, marker='o', s=5)
+
+        """ Distribution Y-Z"""
+        plt.subplot(1, 3, 3)
+        plt.scatter(vy_data, vz_data, alpha=0.6, marker='o', s=5)
+    
+    plt.show()
+
+#plot_ang_velocity('./data/sample6/', '1')
 

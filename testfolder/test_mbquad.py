@@ -11,25 +11,29 @@ import torch
 
 from IPython.core.debugger import set_trace
 
-id_execution_test   =   '1'
+id_execution_test   =   '5'
 
 restore_folder  ='./data/sample6/'
 save_paths_dir  =   os.path.join(restore_folder, 'rolls'+id_execution_test)
 #save_paths_dir  =   None
-
-env_        =   QuadrotorEnv(port=28001)
-state_shape =   env_.observation_space.shape
-action_shape=   env_.action_space.shape
+with open(os.path.join(restore_folder,'config_train.json'), 'r') as fp:
+    config_train    =   json.load(fp)
 
 config      =   {
     "horizon"           :   20,
     "candidates"        :   1500,
     "discount"          :   0.99,
-    "nstack"            :   2,
+    "nstack"            :   config_train['nstack'],
+    #"reward_type"       :   config_train['reward_type'],
+    "reward_type"       :   'type3',
     "max_path_length"   :   250,
     "nrollouts"         :   20,
     "sthocastic"        :   False
 }
+
+env_        =   QuadrotorEnv(port=28001, reward_type=config['reward_type'])
+state_shape =   env_.observation_space.shape
+action_shape=   env_.action_space.shape
 
 device      =   torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
