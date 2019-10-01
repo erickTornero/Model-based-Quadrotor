@@ -92,7 +92,7 @@ def plot_trajectory(fold, id_ex, list_paths=None):
     plt.show()
 
 # Example:
-#plot_trajectory('./data/sample5/','1', [0, 1, 2])
+#plot_trajectory('./data/sample8/','1', [0, 1, 2])
 
 def plot_pos_over_time(fold, id_ex, max_path_length=250, list_paths=None):
     """
@@ -171,7 +171,7 @@ def plot_pos_over_time(fold, id_ex, max_path_length=250, list_paths=None):
     plt.show()
 
 # Example of its usage
-plot_pos_over_time('./data/sample6/', '4', list_paths=[2])
+#plot_pos_over_time('./data/sample8/', '7', list_paths=None)
 
 def plot_ang_velocity(fold, id_ex, list_paths=None):
     path_name   =   compute_restore_file(fold, id_ex)
@@ -213,5 +213,52 @@ def plot_ang_velocity(fold, id_ex, list_paths=None):
     
     plt.show()
 
-#plot_ang_velocity('./data/sample6/', '1')
+#plot_ang_velocity('./data/sample8/', '3')
+def plot_roll_pitch_angle_otime(fold, id_ex, list_paths=None):
+    path_name   =   compute_restore_file(fold, id_ex)
+    assert path_name is not None, 'Not file of paths founded'
+    
+    paths       =   joblib.load(path_name)
+    list_paths  =   list_paths if list_paths is not None else list(np.arange(len(paths)))
+    
+    with open(os.path.join(fold, 'rolls'+id_ex+'/experiment_config.json'), 'r') as fp:
+        config_experiment   =   json.load(fp)
+        
+    index_SyawCroll     =   18*(config_experiment['nstack']-1) + 3
+    index_Sroll         =   18*(config_experiment['nstack']-1) + 6
+    index_SpitchCroll   =   18*(config_experiment['nstack']-1) + 7
 
+    for i_path in list_paths:
+        data                =   paths[i_path]['observation']
+        roll_rad            =   np.arcsin(-data[:, index_Sroll])
+        cosroll             =   np.cos(roll_rad)
+        pitch_rad           =   data[:, index_SpitchCroll]/cosroll
+        yaw_rad             =   data[:, index_SyawCroll]/cosroll
+
+        #roll_rad            =   roll_rad * 180.0/np.pi
+        #pitch_rad           =   pitch_rad * 180.0/np.pi
+        #yaw_rad             =   yaw_rad * 180.0/np.pi
+        """
+            PLOT pitch POS
+        """
+        plt.subplot(3, 1, 1)
+        plt.plot(np.arange(len(pitch_rad)), pitch_rad, color='red')
+        #plt.ylim(-90.0, 90.0)
+        #plt.plot(np.arange(len(x_target)), x_target, '-', color='olive',linestyle='dashed')
+        """
+            PLOT Y POS
+        """
+        plt.subplot(3, 1, 2)
+        plt.plot(np.arange(len(roll_rad)), roll_rad, color='blue')
+        #plt.ylim(-90.0, 90.0)
+        #plt.plot(np.arange(len(y_target)), y_target, '-', color='olive',linestyle='dashed')
+        """
+            PLOT Z POS
+        """
+        plt.subplot(3, 1, 3)
+        plt.plot(np.arange(len(yaw_rad)), yaw_rad, color='gray')
+        #plt.ylim(-90.0, 90.0)
+        #plt.plot(np.arange(len(z_target)), z_target, '-', color='olive',linestyle='dashed')
+    plt.show()
+
+plot_roll_pitch_angle_otime('./data/sample6/','1', list_paths=[0])

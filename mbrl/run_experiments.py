@@ -21,7 +21,7 @@ from tensorboardX import SummaryWriter
 
 config  =   {
     # General parameters #
-    "id_executor"           :   'sample8',
+    "id_executor"           :   'sample9',
     "n_iterations"          :   128,
 
     # MPC Controller - Random Shooting #
@@ -34,7 +34,7 @@ config  =   {
     
     "max_path_length"       :   250,
     "total_tsteps_per_run"  :   10000,
-    "reward_type"           :   'type3',
+    "reward_type"           :   'type1',
 
     # Training Parameters #
     
@@ -45,7 +45,7 @@ config  =   {
 
     # Dynamics parameters #
     "sthocastic"            :   False,
-    "nstack"                :   1
+    "nstack"                :   4
 }
 """*****************************************
     Hyper-Parameters Settings

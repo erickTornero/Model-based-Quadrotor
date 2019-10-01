@@ -11,7 +11,7 @@ import torch
 
 from IPython.core.debugger import set_trace
 
-id_execution_test   =   '5'
+id_execution_test   =   '7'
 
 restore_folder  ='./data/sample6/'
 save_paths_dir  =   os.path.join(restore_folder, 'rolls'+id_execution_test)
@@ -25,7 +25,7 @@ config      =   {
     "discount"          :   0.99,
     "nstack"            :   config_train['nstack'],
     #"reward_type"       :   config_train['reward_type'],
-    "reward_type"       :   'type3',
+    "reward_type"       :   'type1',
     "max_path_length"   :   250,
     "nrollouts"         :   20,
     "sthocastic"        :   False

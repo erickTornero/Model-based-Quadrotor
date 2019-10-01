@@ -117,11 +117,17 @@ class VREPQuad(gym.Env):
         reward          =   4.0 -1.25 * distance
 
         #TODO: Temporal reward penalization, must be abstracted more
-        rollpitch_  =   linvel[:2]/10.0
-        yawvel      =   linvel[2]/30.0
-        angvel_penalization = np.sqrt((rollpitch_*rollpitch_).sum()+yawvel*yawvel)
-        reward = reward - angvel_penalization 
-        # EndTODO: check then
+        #rollpitch_  =   linvel[:2]/10.0
+        #yawvel      =   linvel[2]/30.0
+        #angvel_penalization = np.sqrt((rollpitch_*rollpitch_).sum()+yawvel*yawvel)
+        #reward = reward - angvel_penalization 
+        #------------Reward version 2------------#
+        #roll_rad    =   np.arcsin(-rotmat[3])
+        #cosroll     =   np.cos(roll_rad)
+        #pitch_rad   =   np.arcsin(rotmat[7])/cosroll
+        #yaw_rad     =   np.arcsin(rotmat[6])/cosroll
+
+        # EndTODO:
         #if distance > 3.2:
         #    reward = 0.0
         self.cumulative_rw  +=  reward
@@ -275,7 +281,7 @@ class VREPQuad(gym.Env):
         #rowdata         =   np.append(RotMat, position)
         #rowdata         =   np.append(rowdata, velocity[1])
         #rowdata         =   np.append(rowdata, velocity[2])
-
+        
         """ Test relative position """
         position        =   position  - self.targetpos
         #print(position)

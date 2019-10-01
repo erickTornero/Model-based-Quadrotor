@@ -23,7 +23,8 @@ def rollouts(dynamics:Dynamics, env:QuadrotorEnv, mpc:RandomShooter, n_rolls=20,
         
     #env.set_targetpos(np.random.uniform(-1.0, 1.0, size=(3,)))
     for i_roll in range(1, n_rolls+1):
-        targetposition  =   np.random.uniform(-1.0, 1.0, size=(3))
+        #targetposition  =   np.random.uniform(-1.0, 1.0, size=(3))
+        targetposition  =   0.8 * np.ones(3, dtype=np.float32)
         next_target_pos =   targetposition
 
         env.set_targetpos(targetposition)
