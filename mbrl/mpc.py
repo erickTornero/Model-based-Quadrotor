@@ -60,6 +60,83 @@ class RandomShooter:
         #print(returns[idx_min_ret], returns[idx_max_ret])
         return action_c[np.argmax(returns)]
 
+    def get_action_CEM(self, obs_, J:int, M:int, alpha:int):
+        """
+            Planning with Random Shooting with Cross Entropy Method for a single Environment
+
+            obs_:       Observation for planning actions
+            M:          Number of interactions
+            J:          Number of maximum values to take
+        """
+        self.batch_as.restart(*obs_.get())
+        h   =   self.horizon
+        c   =   self.candidates
+        returns =   np.zeros((c, ))
+
+        high    =   self.act_space.high
+        low     =   self.act_space.low
+        #set_trace()
+        
+        for m in range(M):
+            """ 
+                If first iteration: execute the Random Shooting algorithm
+                else: Iterate with Cross Entropy Method (CEM)
+            """
+            if m==0:
+                actions =   self.get_random_actions(h * c).reshape((h, c,) + self.act_space.shape)
+                actions =   actions.reshape((c, h, self.act_space.shape[0]))
+
+                actions_mean    =   np.zeros((self.horizon, self.act_space.shape[0]), dtype=np.float32)
+                actions_std     =   np.zeros((self.horizon, self.act_space.shape[0]), dtype=np.float32)
+            else:
+                actions         =   np.random.normal(actions_mean, actions_std, (c, h, self.act_space.shape[0]))
+                actions         =   np.clip(actions, a_min=low, a_max=high)
+            for t in range(h):
+               
+                self.batch_as.slide_action_stack(actions[:,t,:])
+                """ Normalize input """
+                obs_flat    =   self.batch_as.get()
+                obs_flat    =   self.normalize_(obs_flat)
+                obs_tensor  =   torch.tensor(obs_flat, dtype=torch.float32, device=self.device)
+
+                next_obs    =   self.dynamics.predict_next_obs(obs_tensor, self.device).to('cpu')
+                next_obs    =   np.asarray(next_obs)
+                rewards     =   self.env.reward(next_obs)
+                returns     =   returns + self.discount**t*rewards
+
+                self.batch_as.slide_state_stack(next_obs)
+
+            best_j_indexes =   np.argsort(returns)[-J:][::-1]
+            best_j_actions  =   actions[np.ix_([best_j_indexes])]
+            actions_mean    =   alpha * np.mean(best_j_actions, axis=0) + actions_mean * (1 - alpha)
+            actions_std     =   alpha * np.std(best_j_actions,  axis=0) + actions_std * (1 - alpha)
+
+        return best_j_actions[0]
+
+    def get_action_PDDM(self, obs_, gamma, beta):
+        self.batch_as.restart(*obs_.get())
+        h   =   self.horizon
+        c   =   self.candidates
+        returns =   np.zeros((c, ))
+        actions =   self.get_random_actions(h * c).reshape((h, c,) + self.act_space.shape)
+
+        actions_mean    =   np.zeros((self.horizon, self.act_space.shape[0]), dtype=np.float32)
+        noises          =   np.zeros((self.horizon, self.act_space.shape[0]), dtype=np.float32)
+
+        for t in range(h):
+            self.batch_as.slide_action_stack(actions[:,t,:])
+            """ Normalize input """
+            obs_flat    =   self.batch_as.get()
+            obs_flat    =   self.normalize_(obs_flat)
+            obs_tensor  =   torch.tensor(obs_flat, dtype=torch.float32, device=self.device)
+
+            next_obs    =   self.dynamics.predict_next_obs(obs_tensor, self.device).to('cpu')
+            next_obs    =   np.asarray(next_obs)
+            rewards     =   self.env.reward(next_obs)
+            returns     =   returns + self.discount**t*rewards
+            # Compute ponderate mean action:
+            actions_mean[t]     =   np.sum(np.exp(gamma * rewards).reshape(-1, 1)*actions[:, t,:], axis=0)/(np.sum(np.exp(gamma * rewards))) 
+            noises[t]          =   beta * actions_mean + ((1 - beta) * noises[t - 1] if t > 0 else 0)
 
     def get_random_actions(self, n):
         return np.random.uniform(low=self.act_space.low, high=self.act_space.high, size=(n,)+self.act_space.shape)
@@ -70,13 +147,41 @@ class RandomShooter:
     def denormalize_(self, obs):
         assert self.dynamics.mean_input is not None
         return obs * (self.dynamics.std_input + self.dynamics.epsilon) + self.dynamics.mean_input
-        
+
+class CrossEntropyMethod:
+    def __init__(self, h, c, env_:gym.Env, dynamics, device, discount=1.0):
+        self.horizon    =   h
+        self.candidates =   c
+        self.env        =   env_
+        self.discount   =   discount
+
+        self.act_space  =   self.env.action_space
+        self.obs_space  =   self.env.observation_space 
+
+        self.dynamics   =   dynamics
+        self.device     =   device
+
+        self.stack_n    =   self.dynamics.stack_n
+        self.batch_as   =   BatchStacks(self.act_space.shape, self.obs_space.shape, self.stack_n, self.candidates, device)
+
+ 
 
 class BatchStacks:
     """
         Append a batch of state-actions: (StackStAct)get
         Optimized, working with np.ndarray data-type
         ans with = are not really copy, just share memory
+        @parameters:
+
+        act_shape      :   Action space shape
+        st_shape       :   State space shape
+        stack_n        :   Stacked state-actions-pairs (usually: 4)
+        n              :   Number of candidates
+        device         :   Pytorch variable, to compute in cpu or gpu
+        init_st_stack  :   Initial state_stack
+        init_ac_stack  :   Initial actions stack
+
+        restart function must be called to used properly
     """
     def __init__(self, act_shape, st_shape, stack_n, n:int, device, init_st_stack=None, init_ac_stack=None):
         #b_stack =   StackStAct(act_shape, st_shape, stack_n, init_st, init_ac)

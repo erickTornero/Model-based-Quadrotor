@@ -47,11 +47,13 @@ def plot_scatter_positions(data, index_start_pos, save_path=None):
 def plot_reward_bar_distributions(folder_dir, n_bars=20, rmin=0, rmax=1000.0, iterations=None, save_path=None):
     import os
     import glob
+    folder_dir   =   os.path.join(folder_dir, 'rewards')
+    
     all_files =   glob.glob(os.path.join(folder_dir, 'rewards_it_*.pkl'))
     if iterations is not None:
         from braceexpand import braceexpand
         iterations_set_itr = list_set_to_str(iterations)
-        files_candidates  =   list(braceexpand(folder_dir+'rewards_it_'+iterations_set_itr+'.pkl'))
+        files_candidates  =   list(braceexpand(os.path.join(folder_dir,'rewards_it_'+iterations_set_itr+'.pkl')))
         all_files_set = set(all_files)
         files_  =   []
         for f in files_candidates:
