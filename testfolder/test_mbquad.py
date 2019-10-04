@@ -11,9 +11,9 @@ import torch
 
 from IPython.core.debugger import set_trace
 
-id_execution_test   =   '7'
+id_execution_test   =   '1'
 
-restore_folder  ='./data/sample6/'
+restore_folder  ='./data/sample11/'
 save_paths_dir  =   os.path.join(restore_folder, 'rolls'+id_execution_test)
 #save_paths_dir  =   None
 with open(os.path.join(restore_folder,'config_train.json'), 'r') as fp:
@@ -62,3 +62,5 @@ if save_paths_dir is not None:
         json.dump(config, fp, indent=2)
 
 rollouts(dynamics, env_, rs, config['nrollouts'], config['max_path_length'], save_paths_dir)
+
+del env_

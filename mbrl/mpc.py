@@ -75,7 +75,6 @@ class RandomShooter:
 
         high    =   self.act_space.high
         low     =   self.act_space.low
-        #set_trace()
         
         for m in range(M):
             """ 
@@ -114,29 +113,62 @@ class RandomShooter:
         return best_j_actions[0]
 
     def get_action_PDDM(self, obs_, gamma, beta):
+        import copy
         self.batch_as.restart(*obs_.get())
         h   =   self.horizon
         c   =   self.candidates
         returns =   np.zeros((c, ))
-        actions =   self.get_random_actions(h * c).reshape((h, c,) + self.act_space.shape)
+        #actions =   self.get_random_actions(h * c).reshape((h, c,) + self.act_space.shape)
 
         actions_mean    =   np.zeros((self.horizon, self.act_space.shape[0]), dtype=np.float32)
-        noises          =   np.zeros((self.horizon, self.act_space.shape[0]), dtype=np.float32)
+        noises          =   np.zeros((self.horizon, c, self.act_space.shape[0]), dtype=np.float32)
 
+        #u_ti            =   np.random.normal(, 10.0, size=(c, 4))
         for t in range(h):
-            self.batch_as.slide_action_stack(actions[:,t,:])
+            # Compute random actions
+            actions =   self.get_random_actions(c).reshape((c,) + self.act_space.shape)
+
+            batch_copied    =   copy.deepcopy(self.batch_as)
+
+            batch_copied.slide_action_stack(actions)
             """ Normalize input """
-            obs_flat    =   self.batch_as.get()
+            obs_flat    =   batch_copied.get()
             obs_flat    =   self.normalize_(obs_flat)
             obs_tensor  =   torch.tensor(obs_flat, dtype=torch.float32, device=self.device)
 
             next_obs    =   self.dynamics.predict_next_obs(obs_tensor, self.device).to('cpu')
             next_obs    =   np.asarray(next_obs)
             rewards     =   self.env.reward(next_obs)
+            #returns     =   returns + self.discount**t*rewards
+            """Compute ponderate mean action:"""
+            actions_mean    =   np.sum(np.exp(gamma * rewards).reshape(-1, 1)* actions, axis=0)/(np.sum(np.exp(gamma * rewards))) 
+            """ 
+                Compute noises 
+                TODO: What is the scale of Covarianze matrix, temporaly we try with 10.0?
+            """
+            u_ti            =   np.random.normal(np.zeros((c, ), dtype=np.float32), 10.0, size=((c,)+self.act_space.shape))
+            noises[t]       =   beta * u_ti + ((1 - beta) * noises[t - 1] if t > 0 else 0)
+
+            actions_pddm    =   noises[t] + actions_mean
+
+            if t == 0:
+                action_c   =   actions_pddm
+
+            self.batch_as.slide_action_stack(actions_pddm)
+            """ Normalize input """
+            obs_flat    =   self.batch_as.get()
+            obs_flat    =   self.normalize_(obs_flat)
+            obs_tensor  =   torch.tensor(obs_flat, dtype=torch.float32, device=self.device)
+
+            next_obs    =   self.dynamics.predict_next_obs(obs_tensor, self.device).to('cpu')
+            
+            rewards     =   self.env.reward(next_obs)
             returns     =   returns + self.discount**t*rewards
-            # Compute ponderate mean action:
-            actions_mean[t]     =   np.sum(np.exp(gamma * rewards).reshape(-1, 1)*actions[:, t,:], axis=0)/(np.sum(np.exp(gamma * rewards))) 
-            noises[t]          =   beta * actions_mean + ((1 - beta) * noises[t - 1] if t > 0 else 0)
+            next_obs    =   np.asarray(next_obs)
+
+            self.batch_as.slide_state_stack(next_obs)
+
+        return action_c[np.argmax(returns)]
 
     def get_random_actions(self, n):
         return np.random.uniform(low=self.act_space.low, high=self.act_space.high, size=(n,)+self.act_space.shape)
@@ -164,7 +196,42 @@ class CrossEntropyMethod:
         self.stack_n    =   self.dynamics.stack_n
         self.batch_as   =   BatchStacks(self.act_space.shape, self.obs_space.shape, self.stack_n, self.candidates, device)
 
- 
+class MPPI:
+    def __init__(self, h, c, env_:gym.Env, dynamics, device, discount):
+        from collections import deque
+        self.horizon    =   h
+        self.candidates =   c
+        self.env        =   env_
+        self.discount   =   discount
+
+        self.act_space  =   self.env.action_space
+        self.obs_space  =   self.env.observation_space 
+
+        self.dynamics   =   dynamics
+        self.device     =   device
+
+        self.initial_sequence   =   deque(self.horizon * [np.zeros(self.act_space.shape[0], dtype=np.float32)], maxlen=self.horizon)
+
+        self.stack_n    =   self.dynamics.stack_n
+        self.batch_as   =   BatchStacks(self.act_space.shape, self.obs_space.shape, self.stack_n, self.candidates, device)
+
+    def get_action(self, obs_):
+        self.batch_as.restart(*obs_.get())
+        h   =   self.horizon
+        c   =   self.candidates
+        returns =   np.zeros((c, ))
+        init_sequence   =   np.asarray(self.initial_sequence)
+
+
+
+            
+    def normalize_(self, obs):
+        assert self.dynamics.mean_input is not None
+        return (obs - self.dynamics.mean_input)/(self.dynamics.std_input + self.dynamics.epsilon)
+    def denormalize_(self, obs):
+        assert self.dynamics.mean_input is not None
+        return obs * (self.dynamics.std_input + self.dynamics.epsilon) + self.dynamics.mean_input
+   
 
 class BatchStacks:
     """
