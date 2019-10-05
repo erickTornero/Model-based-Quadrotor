@@ -7,7 +7,7 @@ class ParallelVrepEnv(object):
     Wrap multiples instances of vrep without loss the id connection
     """
     
-    def __init__(self, max_path_length:int, ports:list, envClass, reward_type):
+    def __init__(self, max_path_length:int, ports:list, envClass, reward_type, cripple_rotor):
         """
         Initialize Pipes and Process
         """
@@ -18,6 +18,7 @@ class ParallelVrepEnv(object):
         self.env_           =   None
         self.envClass       =   envClass
         self.reward_type    =   reward_type
+        self.crippled_rotor =   cripple_rotor
         self.num_rollouts   =   [0]*self.n_parallel
         #assert num_rollouts == self._num_envs
         #assert num_rollouts % self.n_parallel == 0
@@ -80,7 +81,7 @@ class ParallelVrepEnv(object):
 
     def worker(self, remote, parent_remote, max_path_length, idremote, seed, port_):
         #print('idremote', idremote)
-        env = self.envClass(port=port_, reward_type=self.reward_type)
+        env = self.envClass(port=port_, reward_type=self.reward_type, fault_rotor=self.crippled_rotor)
 
         if port_ == self.ports[0]:
             self.env_ = env

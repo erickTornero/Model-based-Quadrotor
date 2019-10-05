@@ -2,15 +2,19 @@ from wrapper_quad.wrapper_vrep import VREPQuad
 import numpy as np
 
 class QuadrotorEnv(VREPQuad):
-    def __init__(self, port, reward_type):
+    def __init__(self, port, reward_type, fault_rotor=None):
         super(QuadrotorEnv, self).__init__(port=port)
 
-        self.faultmotor =   1      
+        self.faultmotor =   fault_rotor
         self.mask       =   np.ones(4, dtype=np.float32)
-
+                
         if self.faultmotor is not None:
+            assert fault_rotor < 4, 'Choose a fault rotor in range of [0-3]'
             self.mask[self.faultmotor]  =   0.0
-
+            print('Quadrotor Environment Initialized with rotor {} faulted'.format(self.faultmotor))
+        else: print('Quadrotor Initialized in fault-free case')
+        
+        """ Initialize Reward function """
         if reward_type  ==  'type1':
             self.reward =   self.distance_reward
         elif reward_type == 'type2':
@@ -18,7 +22,7 @@ class QuadrotorEnv(VREPQuad):
         elif reward_type == 'type3':
             self.reward =   self.roll_pitch_yaw_vel_penalized
         else:
-            print('Error: No valid reward function: example: ("type1")')
+            assert True, 'Error: No valid reward function: example: ("type1")'
     
     def step(self, action:np.ndarray):
         fault_action    =   self.mask * action

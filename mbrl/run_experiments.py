@@ -15,17 +15,30 @@ import joblib
 import json
 
 from utils.plots import *
+from utils.utility import *
 from IPython.core.debugger import set_trace
 
 from tensorboardX import SummaryWriter
+"""
+    mpc:                    RandomShooter 
+                            CEM 
+                            PDDM
+
+    Activation_functions:   tanh
+                            relu
+                            swish
+                            elu
+    crippled_rotor:     Choose between [0-3], to set a failed rotor
+                        set to None to test in fault-free case    
+"""
 
 config  =   {
     # General parameters #
-    "id_executor"           :   'sample9',
-    "n_iterations"          :   128,
+    "id_executor"           :   'sample14',
+    "n_iterations"          :   256,
 
     # MPC Controller - Random Shooting #
-    
+    "mpc"                   :   'RandomShooter',
     "horizon"               :   15,
     "candidates"            :   1000,
     "discount"              :   0.99,
@@ -35,7 +48,7 @@ config  =   {
     "max_path_length"       :   250,
     "total_tsteps_per_run"  :   10000,
     "reward_type"           :   'type1',
-
+    "crippled_rotor"        :   1,
     # Training Parameters #
     
     "batch_size"            :   500,
@@ -45,7 +58,9 @@ config  =   {
 
     # Dynamics parameters #
     "sthocastic"            :   False,
-    "nstack"                :   4
+    "hidden_layers"         :   (250,250,250),
+    "activation_function"   :   'tanh',
+    "nstack"                :   2
 }
 """*****************************************
     Hyper-Parameters Settings
@@ -62,26 +77,26 @@ save_path               =   os.path.join('./data/', config['id_executor'])
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-env_ = QuadrotorEnv(port=27001, reward_type=config['reward_type']) # 28
+env_ = QuadrotorEnv(port=27001, reward_type=config['reward_type'], fault_rotor=config['crippled_rotor']) # 28
 #vecenv=ParallelVrepEnv(ports=[25001,28001], max_path_length=250, envClass=QuadrotorEnv)
-vecenv=ParallelVrepEnv(ports=[19999, 20001,21001,22001], max_path_length=config['max_path_length'], envClass=QuadrotorEnv, reward_type=config['reward_type'])
-state_shape= env_.observation_space.shape
-action_shape=env_.action_space.shape
+vecenv=ParallelVrepEnv(ports=[19999, 20001,21001,22001], max_path_length=config['max_path_length'], envClass=QuadrotorEnv, reward_type=config['reward_type'], cripple_rotor=config['crippled_rotor'])
+state_shape         =   env_.observation_space.shape
+action_shape        =   env_.action_space.shape
+activation_function =   DecodeActFunction(config['activation_function'])
 
-dyn = Dynamics(state_shape, action_shape, stack_n=config['nstack'], sthocastic=config['sthocastic'])
-
-
+dyn = Dynamics(state_shape, action_shape, stack_n=config['nstack'], sthocastic=config['sthocastic'], actfn=activation_function, hlayers=config['hidden_layers'])
 dyn = dyn.to(device)
 
-optimizer               =   optim.Adam(lr=config['learning_rate'], params=dyn.parameters())
+optimizer           =   optim.Adam(lr=config['learning_rate'], params=dyn.parameters())
 
-rs = RandomShooter(config['horizon'], config['candidates'], env_, dyn, device, config['discount'])
+mpc_class           =   DecodeMPC(config['mpc'])
+mpc                 =   mpc_class(config['horizon'], config['candidates'], env_, dyn, device, config['discount'])
 
 trainer =   Trainer(dyn, config['batch_size'], config['n_epochs'], config['validation_percent'], config['learning_rate'], device, optimizer)
 
 print('--------- Creation of runner--------')
 
-runner = Runner(vecenv, env_, dyn, rs, config['max_path_length'], config['total_tsteps_per_run'])
+runner = Runner(vecenv, env_, dyn, mpc, config['max_path_length'], config['total_tsteps_per_run'])
 
 
 assert not os.path.exists(save_path), 'Already this folder is busy, select other'
@@ -97,7 +112,7 @@ os.makedirs(observations_path)
 os.makedirs(rewards_path)
 os.makedirs(images_path)
 
-writer = SummaryWriter()
+writer = SummaryWriter('./runs/'+config['id_executor'])
 mean_reward_maximum =   0.0
 for n_it in range(1, config['n_iterations']+1):
     print('============================================')
