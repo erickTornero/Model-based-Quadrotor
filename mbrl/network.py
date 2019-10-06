@@ -57,6 +57,8 @@ class Dynamics(nn.Module):
                 x   =   self.denormalize_state(obs, self.state_shape*(self.stack_n - 1), self.state_shape * self.stack_n, device) + x[:, :self.state_shape]
             else:
                 pass
+        
+        return x
     
     def compute_normalization_stats(self, obs):
         self.mean_input =   np.mean(obs, axis=0)
