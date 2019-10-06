@@ -306,3 +306,78 @@ class BatchStacks:
         np_obs = self.get()
         #return torch.from_numpy(np_obs).to(self.device)
         return torch.tensor(np_obs, dtype=torch.float32, device=self.device)
+
+
+class BatchStacksTorch:
+    """
+        Append a batch of state-actions: (StackStAct)get
+        Optimized, working with torch.Tensor data-type
+        ans with = are not really copy, just share memory
+        @parameters:
+
+        act_shape      :   Action space shape
+        st_shape       :   State space shape
+        stack_n        :   Stacked state-actions-pairs (usually: 4)
+        n              :   Number of candidates
+        device         :   Pytorch variable, to compute in cpu or gpu
+        init_st_stack  :   Initial state_stack
+        init_ac_stack  :   Initial actions stack
+
+        restart function must be called to used properly
+    """
+    def __init__(self, act_shape, st_shape, stack_n, n:int, device, init_st_stack=None, init_ac_stack=None):
+        #b_stack =   StackStAct(act_shape, st_shape, stack_n, init_st, init_ac)
+        self.state_init =   0
+        self.action_init    =   st_shape[0] * stack_n
+
+        self.action_shape_sz    =   act_shape[0]
+        self.state_shape_sz     =   st_shape[0]
+        self.stack_n            =   stack_n
+
+        self.n                  =   n
+        self.act_shape          =   act_shape
+        self.st_shape           =   st_shape
+        self.device             =   device
+        #Assuming torch device
+        if init_st_stack is not None:
+            self.state_batch_flat   =   init_st_stack.flatten()
+            self.state_batch_flat   =   self.state_batch_flat.repeat(n, 1)
+            """Ensure compatibilities of shapes"""
+            assert self.state_batch_flat.shape[1]  == st_shape[0] * stack_n
+        
+        if init_ac_stack is not None:
+            self.action_batch_flat  =   init_ac_stack.flatten()
+            self.action_batch_flat  =   self.action_batch_flat.repeat(n, 1)
+            """Ensure compatibilities of shapes"""
+            assert self.action_batch_flat.shape[1]  ==  act_shape[0] * stack_n
+
+    def restart(self, init_st_stack, init_ac_stack):
+        self.state_batch_flat   =   init_st_stack.flatten()
+        self.state_batch_flat   =   self.state_batch_flat.repeat(self.n, 1)
+
+        self.action_batch_flat  =   init_ac_stack.flatten()
+        self.action_batch_flat  =   self.action_batch_flat.repeat(self.n, 1)
+        """Ensure compatibilities of shapes"""
+        assert self.state_batch_flat.shape[1]  ==   self.st_shape[0] * self.stack_n
+        assert self.action_batch_flat.shape[1]  ==  self.act_shape[0] * self.stack_n
+
+
+    def slide_action_stack(self, entry_action):
+        self.action_batch_flat[:, :self.action_shape_sz * (self.stack_n - 1)]   =   self.action_batch_flat[:, self.action_shape_sz:]
+        self.action_batch_flat[:, self.action_shape_sz * (self.stack_n - 1):]   =   entry_action
+
+    def slide_state_stack(self, entry_state):
+        self.state_batch_flat[:, :self.state_shape_sz * (self.stack_n - 1)]     = self.state_batch_flat[:, self.state_shape_sz:]
+        self.state_batch_flat[:, self.state_shape_sz * (self.stack_n - 1):]     = entry_state
+    
+    def slide_stacks(self, entry_action=None, entry_state=None):
+        if entry_action is not None: self.slide_action_stack(entry_action)
+        if entry_state is not None: self.slide_state_stack(entry_state)
+    
+    def get(self):
+        #return self.state_batch_flat, self.action_batch_flat
+        return torch.cat((self.state_batch_flat, self.action_batch_flat), axis=1)
+    def get_tensor_numpy(self):
+        np_obs = self.get().to('cpu')
+        #return torch.from_numpy(np_obs).to(self.device)
+        return np.asarray(np_obs)

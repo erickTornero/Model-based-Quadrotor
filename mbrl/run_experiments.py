@@ -28,13 +28,19 @@ from tensorboardX import SummaryWriter
                             relu
                             swish
                             elu
-    crippled_rotor:     Choose between [0-3], to set a failed rotor
-                        set to None to test in fault-free case    
+
+    crippled_rotor:         Choose between [0-3], to set a failed rotor
+                            set to None to test in fault-free case
+
+    reward_type:            Chose following values: 'type{1:3}'
+                            type1: Distance reward
+                            type2: Penalized roll & pitch velocities
+                            type3: Penalized roll & pitch & yaw velocities
 """
 
 config  =   {
     # General parameters #
-    "id_executor"           :   'sample14',
+    "id_executor"           :   'sample15',
     "n_iterations"          :   256,
 
     # MPC Controller - Random Shooting #
