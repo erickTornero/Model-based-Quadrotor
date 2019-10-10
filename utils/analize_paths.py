@@ -171,7 +171,7 @@ def plot_pos_over_time(fold, id_ex, max_path_length=250, list_paths=None):
     plt.show()
 
 # Example of its usage
-#plot_pos_over_time('./data/sample8/', '7', list_paths=None)
+#plot_pos_over_time('./data/sample9/', '1', list_paths=[3,5,19])
 
 def plot_ang_velocity(fold, id_ex, list_paths=None):
     path_name   =   compute_restore_file(fold, id_ex)
@@ -261,4 +261,59 @@ def plot_roll_pitch_angle_otime(fold, id_ex, list_paths=None):
         #plt.plot(np.arange(len(z_target)), z_target, '-', color='olive',linestyle='dashed')
     plt.show()
 
-plot_roll_pitch_angle_otime('./data/sample6/','1', list_paths=[0])
+#plot_roll_pitch_angle_otime('./data/sample6/','1', list_paths=[0])
+
+def plot_forces(fold, id_ex, list_paths=None):
+    path_name   =   compute_restore_file(fold, id_ex)
+    assert path_name is not None, 'Not file of paths founded'
+    
+    paths       =   joblib.load(path_name)
+    list_paths  =   list_paths if list_paths is not None else list(np.arange(len(paths)))
+
+    with open(os.path.join(fold, 'rolls'+id_ex+'/experiment_config.json'), 'r') as fp:
+        config_experiment   =   json.load(fp)
+    
+    mask        =   np.ones((4,), dtype=np.float32)
+    fault_rotor =   config_experiment['crippled_rotor']
+    if fault_rotor is not None:
+        mask[fault_rotor]   =   0.0
+    
+    start_action    =   4 * (config_experiment['nstack']-1)
+    for id_path in list_paths:
+        actions     =   paths[id_path]['actions'][:, start_action:]
+        actions     =   actions * mask
+        forces  =   1.5618e-4*actions*actions + 1.0395e-2*actions + 0.13894
+        len_path    =   len(actions)
+        plt.subplot(2, 2, 1)
+        len_path = 120
+        plt.plot(np.arange(len_path), forces[:120,0])
+        plt.xticks(np.arange(0, len_path, 10))
+        plt.grid()
+        plt.ylim(0.0, 3.0)
+        plt.title('Motor 1')
+
+        plt.subplot(2, 2, 2)
+        plt.plot(np.arange(len_path), forces[:120,1])
+        plt.xticks(np.arange(0, len_path, 10))
+        plt.grid()
+        plt.ylim(0.0, 3.0)
+        plt.title('Motor 2')
+        
+        plt.subplot(2, 2, 3)
+        plt.plot(np.arange(len_path), forces[:120,2])
+        plt.xticks(np.arange(0, 120, 5))
+        plt.grid()
+        plt.ylim(0.0, 3.0)
+        plt.title('Motor 3')
+
+        plt.subplot(2, 2, 4)
+        plt.plot(np.arange(len_path), forces[:120,3])
+        plt.xticks(np.arange(0, len_path, 5))
+        plt.grid()
+        plt.ylim(0.0, 3.0)
+        plt.title('Motor 4')
+
+    plt.tight_layout()
+    plt.show()
+
+plot_forces('./data/sample15/','3',list_paths=[1])

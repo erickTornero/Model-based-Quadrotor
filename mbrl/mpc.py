@@ -122,7 +122,7 @@ class RandomShooter:
 
         actions_mean    =   np.zeros((self.horizon, self.act_space.shape[0]), dtype=np.float32)
         noises          =   np.zeros((self.horizon, c, self.act_space.shape[0]), dtype=np.float32)
-
+        #set_trace()
         #u_ti            =   np.random.normal(, 10.0, size=(c, 4))
         for t in range(h):
             # Compute random actions
@@ -141,15 +141,16 @@ class RandomShooter:
             rewards     =   self.env.reward(next_obs)
             #returns     =   returns + self.discount**t*rewards
             """Compute ponderate mean action:"""
-            actions_mean    =   np.sum(np.exp(gamma * rewards).reshape(-1, 1)* actions, axis=0)/(np.sum(np.exp(gamma * rewards))) 
+            gamrwclamp  =   np.clip(gamma * rewards, -70.0, 70.0)
+            actions_mean    =   np.sum(np.exp(gamrwclamp).reshape(-1, 1)* actions, axis=0)/(np.sum(np.exp(gamrwclamp))) 
             """ 
                 Compute noises 
                 TODO: What is the scale of Covarianze matrix, temporaly we try with 10.0?
             """
-            u_ti            =   np.random.normal(np.zeros((c, ), dtype=np.float32), 10.0, size=((c,)+self.act_space.shape))
+            u_ti            =   np.random.normal(np.zeros(self.act_space.shape, dtype=np.float32), 30.0, size=((c,)+self.act_space.shape))
             noises[t]       =   beta * u_ti + ((1 - beta) * noises[t - 1] if t > 0 else 0)
 
-            actions_pddm    =   noises[t] + actions_mean
+            actions_pddm    =   np.clip(noises[t] + actions_mean, 0.0, 100.0)
 
             if t == 0:
                 action_c   =   actions_pddm
@@ -161,10 +162,9 @@ class RandomShooter:
             obs_tensor  =   torch.tensor(obs_flat, dtype=torch.float32, device=self.device)
 
             next_obs    =   self.dynamics.predict_next_obs(obs_tensor, self.device).to('cpu')
-            
+            next_obs    =   np.asarray(next_obs)
             rewards     =   self.env.reward(next_obs)
             returns     =   returns + self.discount**t*rewards
-            next_obs    =   np.asarray(next_obs)
 
             self.batch_as.slide_state_stack(next_obs)
 
@@ -311,7 +311,7 @@ class BatchStacks:
 class BatchStacksTorch:
     """
         Append a batch of state-actions: (StackStAct)get
-        Optimized, working with torch.Tensor data-type
+        Optimized, working with *torch.Tensor* data-type
         ans with = are not really copy, just share memory
         @parameters:
 

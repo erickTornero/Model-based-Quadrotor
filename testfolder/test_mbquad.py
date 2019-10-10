@@ -11,16 +11,16 @@ import torch
 
 from IPython.core.debugger import set_trace
 
-id_execution_test   =   '1'
+id_execution_test   =   '3'
 
-restore_folder  ='./data/sample11/'
+restore_folder  ='./data/sample15/'
 save_paths_dir  =   os.path.join(restore_folder, 'rolls'+id_execution_test)
 #save_paths_dir  =   None
 with open(os.path.join(restore_folder,'config_train.json'), 'r') as fp:
     config_train    =   json.load(fp)
 
 config      =   {
-    "horizon"           :   20,
+    "horizon"           :   24,
     "candidates"        :   1500,
     "discount"          :   0.99,
     "nstack"            :   config_train['nstack'],
@@ -28,17 +28,19 @@ config      =   {
     "reward_type"       :   'type1',
     "max_path_length"   :   250,
     "nrollouts"         :   20,
-    "sthocastic"        :   False
+    "sthocastic"        :   False,
+    "hidden_layers"     :   config_train['hidden_layers'],
+    "crippled_rotor"    :   config_train['crippled_rotor']
 }
 
-env_        =   QuadrotorEnv(port=28001, reward_type=config['reward_type'])
+env_        =   QuadrotorEnv(port=28001, reward_type=config['reward_type'], fault_rotor=config['crippled_rotor'])
 state_shape =   env_.observation_space.shape
 action_shape=   env_.action_space.shape
 
 device      =   torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 
-dynamics    =   Dynamics(state_shape, action_shape, stack_n=config['nstack'], sthocastic=config['sthocastic'])
+dynamics    =   Dynamics(state_shape, action_shape, stack_n=config['nstack'], sthocastic=config['sthocastic'], hlayers=config['hidden_layers'])
 rs          =   RandomShooter(config['horizon'], config['candidates'], env_, dynamics, device, config['discount'])
 checkpoint  =   torch.load(os.path.join(restore_folder, 'params_high.pkl'))
 dynamics.load_state_dict(checkpoint['model_state_dict'])
