@@ -91,4 +91,6 @@ def rollouts(dynamics:Dynamics, env:QuadrotorEnv, mpc:RandomShooter, n_rolls=20,
 
 
         print(newtexto)
+        
+    return paths
 

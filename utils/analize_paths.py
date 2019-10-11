@@ -98,7 +98,7 @@ def plot_trajectory(fold, id_ex, list_paths=None):
     plt.show()
 
 # Example:
-plot_trajectory('./data/sample16/','6', [5])
+plot_trajectory('./data/sample16/','10', [19])
 
 def plot_pos_over_time(fold, id_ex, max_path_length=250, list_paths=None):
     """
@@ -177,7 +177,7 @@ def plot_pos_over_time(fold, id_ex, max_path_length=250, list_paths=None):
     plt.show()
 
 # Example of its usage
-plot_pos_over_time('./data/sample16/', '6', list_paths=[5])
+plot_pos_over_time('./data/sample16/', '10', list_paths=[19])
 
 def plot_ang_velocity(fold, id_ex, list_paths=None):
     path_name   =   compute_restore_file(fold, id_ex)
@@ -372,32 +372,7 @@ def plot_3Dtrajectory(fold, id_ex, list_paths=None):
         ax.plot(x_data, y_data, z_data)
         ax.plot(target[:,0],target[:,1],target[:,2])
         
-        #""" Distribution X-Y"""
-        #plt.subplot(1, 3, 1)
-        #plt.scatter(x_data, y_data, alpha=0.6, marker='o', s=5)
-        ##plt.plot(x_data, y_data)
-        ##circ1 = plt.Circle((x_data[0], y_data[0]), radius=20, color='red')
-        ##plt.scatter(x_data[0], y_data[0], marker='o', s=40, color='red')
-        ##plt.plot(circ1)
-        #plt.xlim(-3.2, 3.2)
-        #plt.ylim(-3.2, 3.2)
-#
-        #""" Distribution of Position in X-Z"""
-        #plt.subplot(1, 3, 2)
-        #plt.scatter(x_data, z_data, alpha=0.6, marker='o', s=5)
-        ##plt.scatter(x_data[0], y_data[0], marker='o', s=40, color='red')
-        #plt.xlim(-3.2, 3.2)
-        #plt.ylim(-3.2, 3.2)
-#
-        #""" Distribution of Position in Y-Z"""
-        #plt.subplot(1, 3, 3)
-        #plt.scatter(y_data, z_data, alpha=0.6, marker='o', s=5)
-        ##plt.scatter(x_data[0], y_data[0], marker='o', s=40, color='red')
-        #plt.xlim(-3.2, 3.2)
-        #plt.ylim(-3.2, 3.2)
-
-    #plt.legend(['Path '+ str(i_path) for i_path in list_paths])
 
     plt.show()
 
-plot_3Dtrajectory('./data/sample16/','6', list_paths=[5])
+plot_3Dtrajectory('./data/sample16/','10', list_paths=[19])

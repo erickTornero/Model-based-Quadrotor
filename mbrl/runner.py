@@ -54,7 +54,7 @@ class Runner:
                 # Get next action given stat of actions and states
                 #obs_stack, act_stack = stack_as.get()
                 #actions = mpc.get_action(obs_stack, act_stack[1:])
-                actions =   np.stack([self.mpc.get_action(stack_) for stack_ in stack_as], axis=0)
+                actions =   np.stack([self.mpc.get_action_PDDM(stack_, 5.0, 0.6) for stack_ in stack_as], axis=0)
 
             next_obs, rewards, dones, env_infos = self.vec_env.step(actions)
 
@@ -149,6 +149,10 @@ class StackStAct:
         self.states_stack  =   deque(self.n * [init_st], maxlen=self.n)
 
         return np.asarray(self.states_stack), np.asarray(self.actions_stack)
+    
+    def fill_with_stack(self, st_stack=None, ac_stack=None):
+        if st_stack is not None: self.states_stack = deque(st_stack, maxlen=self.n)
+        if ac_stack is not None: self.actions_stack = deque(ac_stack, maxlen=self.n)
 
 
     
