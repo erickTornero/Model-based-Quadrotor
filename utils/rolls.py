@@ -8,7 +8,7 @@ import joblib
 import os
 import glob
 
-def rollouts(dynamics:Dynamics, env:QuadrotorEnv, mpc:RandomShooter, n_rolls=20, max_path_length=250, save_paths=None):
+def rollouts(dynamics:Dynamics, env:QuadrotorEnv, mpc:RandomShooter, n_rolls=20, max_path_length=250, save_paths=None, traj=None):
     """ Generate rollouts for testing & Save paths if it is necessary"""
     nstack  =   dynamics.stack_n
     paths   =   []
@@ -24,7 +24,11 @@ def rollouts(dynamics:Dynamics, env:QuadrotorEnv, mpc:RandomShooter, n_rolls=20,
     #env.set_targetpos(np.random.uniform(-1.0, 1.0, size=(3,)))
     for i_roll in range(1, n_rolls+1):
         #targetposition  =   np.random.uniform(-1.0, 1.0, size=(3))
-        targetposition  =   0.8 * np.ones(3, dtype=np.float32)
+        if traj is None:
+            targetposition  =   0.8 * np.ones(3, dtype=np.float32)
+        else:
+            targetposition  =   traj[0]
+        
         next_target_pos =   targetposition
 
         env.set_targetpos(targetposition)
@@ -39,11 +43,14 @@ def rollouts(dynamics:Dynamics, env:QuadrotorEnv, mpc:RandomShooter, n_rolls=20,
 
         while not done and timestep < max_path_length:
             
-            if timestep == 120:
+            if timestep == 120 and traj is None:
                 next_target_pos  = np.zeros(3, dtype=np.float32)
-                env.set_targetpos(next_target_pos)
+            elif traj is not None:
+                next_target_pos =   traj[timestep + 1]
 
-            action = mpc.get_action(stack_as)
+            env.set_targetpos(next_target_pos)
+
+            action = mpc.get_action_PDDM(stack_as, 0.6, 5)
                
             next_obs, reward, done, env_info =   env.step(action)
 

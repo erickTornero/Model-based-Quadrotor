@@ -3,6 +3,7 @@ from mbrl.wrapped_env import QuadrotorEnv
 from mbrl.mpc import RandomShooter
 
 from utils.rolls import rollouts
+from utils.gen_trajectories import Trajectory
 import os
 import json
 import glob
@@ -11,16 +12,31 @@ import torch
 
 from IPython.core.debugger import set_trace
 
-id_execution_test   =   '3'
+id_execution_test   =   '11'
 
-restore_folder  ='./data/sample15/'
+restore_folder  ='./data/sample16/'
 save_paths_dir  =   os.path.join(restore_folder, 'rolls'+id_execution_test)
 #save_paths_dir  =   None
 with open(os.path.join(restore_folder,'config_train.json'), 'r') as fp:
     config_train    =   json.load(fp)
 
+"""
+@Params:
+trajectory_type:    Select one of the following flags
+
+    'stepped',      : Generate an stepped trajectory: first 48 % max_path_length of timesteps at point (0.8,0.8,0.8) then (0.0,0.0,0.0)
+    'sin_vertical'  : Generate a Sinusoidal trajectory in plane y=0.0, z = sin(x)        
+    'circle'        : Generate a Circular Trajectory in plane z = 0.5, x = sin(t), y=sin(t)
+    'helicoid'       : Generate a vertical Helicoid: z = t, x = cos(t), y=sin(t)
+
+horizon:            The horizon used by the MPC, ussually between 15-20
+candidates:         The number of candidates used by the MPC, ussually between 1000-2000
+nstack:             Number of stacked past state-actions, must be the same as in training step
+
+"""
+
 config      =   {
-    "horizon"           :   24,
+    "horizon"           :   15,
     "candidates"        :   1500,
     "discount"          :   0.99,
     "nstack"            :   config_train['nstack'],
@@ -28,6 +44,7 @@ config      =   {
     "reward_type"       :   'type1',
     "max_path_length"   :   250,
     "nrollouts"         :   20,
+    "trajectory_type"   :   'helicoid',
     "sthocastic"        :   False,
     "hidden_layers"     :   config_train['hidden_layers'],
     "crippled_rotor"    :   config_train['crippled_rotor']
@@ -51,6 +68,10 @@ dynamics.epsilon    =   checkpoint['epsilon']
 
 dynamics.to(device)
 
+""" Send a Trajectory to follow"""
+trajectoryMaganger  =   Trajectory(config['max_path_length'], 2)
+trajectory          =   trajectoryMaganger.gen_points(config['trajectory_type']) if config['trajectory_type'] is not None else None
+
 if save_paths_dir is not None:
     configsfiles    =   glob.glob(os.path.join(save_paths_dir,'*.json'))
     files_paths     =   glob.glob(os.path.join(save_paths_dir,'*.pkl'))
@@ -63,6 +84,6 @@ if save_paths_dir is not None:
     with open(os.path.join(save_paths_dir, 'experiment_config.json'), 'w') as fp:
         json.dump(config, fp, indent=2)
 
-rollouts(dynamics, env_, rs, config['nrollouts'], config['max_path_length'], save_paths_dir)
+rollouts(dynamics, env_, rs, config['nrollouts'], config['max_path_length'], save_paths_dir, trajectory)
 
 del env_

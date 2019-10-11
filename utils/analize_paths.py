@@ -53,11 +53,14 @@ def plot_trajectory(fold, id_ex, list_paths=None):
         #plt.subplot(nfigures, 3, i + 1)
         
         data    =   paths[i_path]['observation']
-
+        targets =   paths[i_path]['target']
+        x_target    =   targets[:, 0]
+        y_target    =   targets[:, 1]
+        z_target    =   targets[:, 2]
         """ Plot distributions of positions in X-Y, X-Z, Y-Z"""
-        x_data   =   data[:, index_start_pos]
-        y_data   =   data[:, index_start_pos + 1]
-        z_data   =   data[:, index_start_pos + 2]
+        x_data   =   data[:, index_start_pos]       +   x_target
+        y_data   =   data[:, index_start_pos + 1]   +   y_target
+        z_data   =   data[:, index_start_pos + 2]   +   z_target
 
         """ Initialize subplot 1 x 3 """
         #plt.figure(figsize=(12, 4))
@@ -66,6 +69,7 @@ def plot_trajectory(fold, id_ex, list_paths=None):
         """ Distribution X-Y"""
         plt.subplot(1, 3, 1)
         plt.scatter(x_data, y_data, alpha=0.6, marker='o', s=5)
+        plt.plot(x_target, y_target, 'black')
         #plt.plot(x_data, y_data)
         #circ1 = plt.Circle((x_data[0], y_data[0]), radius=20, color='red')
         #plt.scatter(x_data[0], y_data[0], marker='o', s=40, color='red')
@@ -76,6 +80,7 @@ def plot_trajectory(fold, id_ex, list_paths=None):
         """ Distribution of Position in X-Z"""
         plt.subplot(1, 3, 2)
         plt.scatter(x_data, z_data, alpha=0.6, marker='o', s=5)
+        plt.plot(x_target, z_target, 'black')
         #plt.scatter(x_data[0], y_data[0], marker='o', s=40, color='red')
         plt.xlim(-3.2, 3.2)
         plt.ylim(-3.2, 3.2)
@@ -83,6 +88,7 @@ def plot_trajectory(fold, id_ex, list_paths=None):
         """ Distribution of Position in Y-Z"""
         plt.subplot(1, 3, 3)
         plt.scatter(y_data, z_data, alpha=0.6, marker='o', s=5)
+        plt.plot(y_target, z_target, 'black')
         #plt.scatter(x_data[0], y_data[0], marker='o', s=40, color='red')
         plt.xlim(-3.2, 3.2)
         plt.ylim(-3.2, 3.2)
@@ -92,7 +98,7 @@ def plot_trajectory(fold, id_ex, list_paths=None):
     plt.show()
 
 # Example:
-#plot_trajectory('./data/sample8/','1', [0, 1, 2])
+plot_trajectory('./data/sample16/','6', [5])
 
 def plot_pos_over_time(fold, id_ex, max_path_length=250, list_paths=None):
     """
@@ -171,7 +177,7 @@ def plot_pos_over_time(fold, id_ex, max_path_length=250, list_paths=None):
     plt.show()
 
 # Example of its usage
-#plot_pos_over_time('./data/sample9/', '1', list_paths=[3,5,19])
+plot_pos_over_time('./data/sample16/', '6', list_paths=[5])
 
 def plot_ang_velocity(fold, id_ex, list_paths=None):
     path_name   =   compute_restore_file(fold, id_ex)
@@ -316,4 +322,82 @@ def plot_forces(fold, id_ex, list_paths=None):
     plt.tight_layout()
     plt.show()
 
-plot_forces('./data/sample15/','3',list_paths=[1])
+#plot_forces('./data/sample15/','3',list_paths=[1])
+
+
+def plot_3Dtrajectory(fold, id_ex, list_paths=None):
+    """ 
+        Plot specific trajectories given in list_paths else
+        plots all the trajectories
+
+        The plots are shown in scattering way and shows 3 subplots (3, 1)
+        Where the plot:
+        (3,1,1): X-Y
+        (3,1,2): X-Z
+        (3,1,3): Y-Z
+    """
+    from mpl_toolkits.mplot3d import Axes3D
+    path_name   =   compute_restore_file(fold, id_ex)
+    assert path_name is not None, 'Not file of paths founded'
+    
+    paths       =   joblib.load(path_name)
+    
+
+    list_paths  =   list_paths if list_paths is not None else list(np.arange(len(paths)))
+
+    nfigures    =   len(list_paths)
+    #set_trace()
+    plt.figure(figsize=(12,4))
+
+    with open(os.path.join(fold, 'rolls'+id_ex+'/experiment_config.json'), 'r') as fp:
+        config_experiment   =   json.load(fp)
+
+    index_start_pos =   18*(config_experiment['nstack']-1) + 9# Index where position starts
+    
+    fig     =   plt.figure()
+    ax      =   fig.gca(projection='3d') 
+    for i, i_path  in enumerate(list_paths):
+        #plt.subplot(nfigures, 3, i + 1)
+        
+        data    =   paths[i_path]['observation']
+        target  =   paths[i_path]['target']
+        """ Plot distributions of positions in X-Y, X-Z, Y-Z"""
+        x_data   =   data[:, index_start_pos]     + target[:, 0]
+        y_data   =   data[:, index_start_pos + 1] + target[:, 1]
+        z_data   =   data[:, index_start_pos + 2] + target[:, 2]
+
+        """ Initialize subplot 1 x 3 """
+        #plt.figure(figsize=(12, 4))
+            
+        ax.plot(x_data, y_data, z_data)
+        ax.plot(target[:,0],target[:,1],target[:,2])
+        
+        #""" Distribution X-Y"""
+        #plt.subplot(1, 3, 1)
+        #plt.scatter(x_data, y_data, alpha=0.6, marker='o', s=5)
+        ##plt.plot(x_data, y_data)
+        ##circ1 = plt.Circle((x_data[0], y_data[0]), radius=20, color='red')
+        ##plt.scatter(x_data[0], y_data[0], marker='o', s=40, color='red')
+        ##plt.plot(circ1)
+        #plt.xlim(-3.2, 3.2)
+        #plt.ylim(-3.2, 3.2)
+#
+        #""" Distribution of Position in X-Z"""
+        #plt.subplot(1, 3, 2)
+        #plt.scatter(x_data, z_data, alpha=0.6, marker='o', s=5)
+        ##plt.scatter(x_data[0], y_data[0], marker='o', s=40, color='red')
+        #plt.xlim(-3.2, 3.2)
+        #plt.ylim(-3.2, 3.2)
+#
+        #""" Distribution of Position in Y-Z"""
+        #plt.subplot(1, 3, 3)
+        #plt.scatter(y_data, z_data, alpha=0.6, marker='o', s=5)
+        ##plt.scatter(x_data[0], y_data[0], marker='o', s=40, color='red')
+        #plt.xlim(-3.2, 3.2)
+        #plt.ylim(-3.2, 3.2)
+
+    #plt.legend(['Path '+ str(i_path) for i_path in list_paths])
+
+    plt.show()
+
+plot_3Dtrajectory('./data/sample16/','6', list_paths=[5])
