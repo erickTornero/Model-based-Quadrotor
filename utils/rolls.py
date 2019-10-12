@@ -50,31 +50,34 @@ def rollouts(dynamics:Dynamics, env:QuadrotorEnv, mpc:RandomShooter, n_rolls=20,
 
             env.set_targetpos(next_target_pos)
 
-            action = mpc.get_action_PDDM(stack_as, 0.6, 5)
+            #action = mpc.get_action_PDDM(stack_as, 0.6, 5)
+            action = mpc.get_action(stack_as)
                
             next_obs, reward, done, env_info =   env.step(action)
 
             stack_as.append(acts=action)
             
 
-            if save_paths is not None:
-                observation, action = stack_as.get()
-                running_paths['observations'].append(observation.flatten())
-                running_paths['actions'].append(action.flatten())
-                running_paths['rewards'].append(reward)
-                running_paths['dones'].append(done)
-                running_paths['next_obs'].append(next_obs)
-                running_paths['target'].append(targetposition)
+            #if save_paths is not None:
+            observation, action = stack_as.get()
+            running_paths['observations'].append(observation.flatten())
+            running_paths['actions'].append(action.flatten())
+            running_paths['rewards'].append(reward)
+            running_paths['dones'].append(done)
+            running_paths['next_obs'].append(next_obs)
+            running_paths['target'].append(targetposition)
 
-                if done or len(running_paths['rewards']) >= max_path_length:
-                    paths.append(dict(
-                        observation=np.asarray(running_paths['observations']),
-                        actions=np.asarray(running_paths['actions']),
-                        rewards=np.asarray(running_paths['rewards']),
-                        dones=np.asarray(running_paths['dones']),
-                        next_obs=np.asarray(running_paths['next_obs']),
-                        target=np.asarray(running_paths['target'])
-                    ))
+            if done or len(running_paths['rewards']) >= max_path_length:
+                #print('ohhhh')
+                paths.append(dict(
+                    observation=np.asarray(running_paths['observations']),
+                    actions=np.asarray(running_paths['actions']),
+                    rewards=np.asarray(running_paths['rewards']),
+                    dones=np.asarray(running_paths['dones']),
+                    next_obs=np.asarray(running_paths['next_obs']),
+                    target=np.asarray(running_paths['target'])
+                ))
+            # endif
             
             targetposition  =   next_target_pos
 
@@ -91,6 +94,6 @@ def rollouts(dynamics:Dynamics, env:QuadrotorEnv, mpc:RandomShooter, n_rolls=20,
 
 
         print(newtexto)
-        
+
     return paths
 

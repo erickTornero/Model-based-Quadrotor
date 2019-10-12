@@ -55,6 +55,7 @@ class Runner:
                 #obs_stack, act_stack = stack_as.get()
                 #actions = mpc.get_action(obs_stack, act_stack[1:])
                 actions =   np.stack([self.mpc.get_action_PDDM(stack_, 5.0, 0.6) for stack_ in stack_as], axis=0)
+                #actions =   np.stack([self.mpc.get_action(stack_) for stack_ in stack_as], axis=0)
 
             next_obs, rewards, dones, env_infos = self.vec_env.step(actions)
 
@@ -137,6 +138,9 @@ class StackStAct:
     
     def get_last_state(self):
         return self.states_stack[-1]
+
+    def get_last_action(self):
+        return self.actions_stack[-1]
     
     def append(self, obs=None, acts=None):
         if obs is not None: self.states_stack.append(obs)
