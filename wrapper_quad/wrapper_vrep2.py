@@ -46,19 +46,33 @@ class VREPQuadAccel(gym.Env):
         self.propsignal =   ['speedprop' + str(i+1) for i in range(0, 4)]
 
     def step(self, action:np.ndarray):
+        """ 
+            Angles en vrep go through -180º to 180, 180ª=-180º 
+            Early stop for angles that commit the following rule abs(alpha) > 90º, this solve the problem of +-180º
+            Compute sin & cos of Yaw angle avoid the problem of +-180ª
+            orientation: [roll, pitch, sinYAW, cosYAW]    
+        """
         for act, name in zip(action, self.propsignal):
             vrep.simxSetFloatSignal(self.clientID, name, act, vrep.simx_opmode_streaming)
 
         vrep.simxSynchronousTrigger(self.clientID)
         vrep.simxGetPingTime(self.clientID)
-        rotmat, position, angvel, linvel =   self._get_observation_state()
-        rowdata         =   self._appendtuples_((rotmat, position, angvel, linvel))
 
+        position, orientation, lin_vel, ang_vel, lin_acel, ang_acel =   self._get_observation_state()
+        #rowdata         =   self._appendtuples_((rotmat, position, angvel, linvel))
+        """ Roll & Pitch must be lower than 90º, else apply earlystop """
+        earlystop       =   np.abs(orientation[:-1]) > np.pi/2.0
+        """ Use sinYAW & cosYAW as features instead of YAW directly to avoid problem when YAW is near to 180º"""
+        yawangle        =   orientation[-1]
+        orientation[-1] =   np.sin(yawangle)
+        orientation     =   np.concatenate((orientation, np.array([np.cos(yawangle)])))
+
+        rowdata         =   np.concatenate((position, orientation, lin_vel, ang_vel, lin_acel, ang_acel), axis=0)
         reward          =   position
         distance        =   np.sqrt((reward * reward).sum())
         reward          =   4.0 -1.25 * distance
-        done             =   (distance > 3.2)
-
+        done            =   (distance > 3.2) or (earlystop.sum() > 0.0) 
+        #done            =   earlystop.sum() > 0.0
         return (rowdata, reward, done, dict())
     
     def reset(self):
@@ -84,9 +98,17 @@ class VREPQuadAccel(gym.Env):
         self.startsimulation()
         vrep.simxSynchronousTrigger(self.clientID)
         vrep.simxGetPingTime(self.clientID)
-        rdata = self._get_observation_state(False)
-        self.prev_pos = np.asarray(rdata[1])
-        return self._appendtuples_(rdata)
+        #rdata = self._get_observation_state(False)
+        position, orientation, lin_vel, ang_vel, lin_acel, ang_acel =   self._get_observation_state(compute_acelleration=False)
+        #rowdata         =   self._appendtuples_((rotmat, position, angvel, linvel))
+        """ Use sinYAW & cosYAW as features instead of YAW directly to avoid problem when YAW is near to 180º"""
+        yawangle        =   orientation[-1]
+        orientation[-1] =   np.sin(yawangle)
+        orientation     =   np.concatenate((orientation, np.array([np.cos(yawangle)])), axis=0)
+
+        rowdata         =   np.concatenate((position, orientation, lin_vel, ang_vel, lin_acel, ang_acel), axis=0)
+        
+        return rowdata
 
     def render(self, close=False):
         print('Trying to render')
@@ -111,14 +133,14 @@ class VREPQuadAccel(gym.Env):
         else:
             raise ConnectionError('Any conection has been done')
 
-    def _get_observation_state(self, compute_acel = True):
+    def _get_observation_state(self, compute_acelleration = True):
         _, position         =   vrep.simxGetObjectPosition(self.clientID,    self.quad_handler, -1, vrep.simx_opmode_oneshot_wait)
         _, orientation      =   vrep.simxGetObjectOrientation(self.clientID, self.quad_handler, -1, vrep.simx_opmode_oneshot_wait)
         _, lin_vel, ang_vel =   vrep.simxGetObjectVelocity(self.clientID,    self.quad_handler, vrep.simx_opmode_oneshot_wait)
         position            =   np.asarray(position, dtype=np.float32)
         orientation         =   np.asarray(orientation, dtype=np.float32)
         lin_vel, ang_vel    =   np.asarray(lin_vel, dtype=np.float32), np.asarray(ang_vel, dtype=np.float32)
-        if compute_acel == True: lin_acel, ang_acel  =   self.compute_aceleration(lin_vel, ang_vel)
+        if compute_acelleration == True: lin_acel, ang_acel  =   self.compute_aceleration(lin_vel, ang_vel)
         else: lin_acel, ang_acel =   np.zeros(3, dtype=np.float32), np.zeros(3, dtype=np.float32) 
 
         return position, orientation, lin_vel, ang_vel, lin_acel, ang_acel
