@@ -50,7 +50,7 @@ class SanityCheck:
 
     def get_state_actions(self):
         """ Generate one rollout """
-        set_trace()
+        #set_trace()
         path    =   rollouts(self.dynamics, self.env, self.mpc, 1, self.max_path_length, None, self.trajectory)
         #gt_states   =   path[0]['observation'][self.t_init:, 18*(self.nstack-1):]
         gt_states   =   path[0]['observation'][self.t_init:self.t_init + self.horizon,:]
@@ -109,7 +109,7 @@ if __name__ == "__main__":
         config_train    =   json.load(fp)
 
     config      =   {
-        "horizon"           :   15,
+        "horizon"           :   20,
         "candidates"        :   1500,
         "discount"          :   0.99,
         "t_init"            :   30,
@@ -150,5 +150,6 @@ if __name__ == "__main__":
     (gt_s, gt_a), (ar_s, ar_a)  =   scheck.get_state_actions()
     scheck.analize_errors(gt_s,ar_s)
     scheck.analize_pos_error(gt_s,ar_s)
-    set_trace()
+    env_.close()
+
     print(10)

@@ -12,9 +12,9 @@ import torch
 
 from IPython.core.debugger import set_trace
 
-id_execution_test   =   '11'
+id_execution_test   =   '10'
 
-restore_folder  ='./data/sample16/'
+restore_folder  ='./data/sample15/'
 save_paths_dir  =   os.path.join(restore_folder, 'rolls'+id_execution_test)
 #save_paths_dir  =   None
 with open(os.path.join(restore_folder,'config_train.json'), 'r') as fp:
@@ -42,9 +42,9 @@ config      =   {
     "nstack"            :   config_train['nstack'],
     #"reward_type"       :   config_train['reward_type'],
     "reward_type"       :   'type1',
-    "max_path_length"   :   250,
+    "max_path_length"   :   1250,
     "nrollouts"         :   20,
-    "trajectory_type"   :   'helicoid',
+    "trajectory_type"   :   'circle',
     "sthocastic"        :   False,
     "hidden_layers"     :   config_train['hidden_layers'],
     "crippled_rotor"    :   config_train['crippled_rotor']
@@ -86,4 +86,4 @@ if save_paths_dir is not None:
 
 rollouts(dynamics, env_, rs, config['nrollouts'], config['max_path_length'], save_paths_dir, trajectory)
 
-del env_
+env_.close()

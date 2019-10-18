@@ -40,6 +40,7 @@ class VREPQuad(gym.Env):
             self.cumulative_rw  =   0.0
             self.episod         =   0
             #self.prev_pos
+            print('Initialized with tstep>\t{}'.format(vrep.simxGetFloatingParameter(self.clientID, vrep.sim_floatparam_simulation_time_step, vrep.simx_opmode_oneshot_wait)))
         else:
             raise ConnectionError("Can't Connect with the envinronment at IP:{}, Port:{}".format(ip, port))
         

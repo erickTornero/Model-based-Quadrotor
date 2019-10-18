@@ -98,7 +98,7 @@ def plot_trajectory(fold, id_ex, list_paths=None):
     plt.show()
 
 # Example:
-plot_trajectory('./data/sample16/','10', [19])
+#plot_trajectory('./data/sample16/','11', [19])
 
 def plot_pos_over_time(fold, id_ex, max_path_length=250, list_paths=None):
     """
@@ -124,7 +124,7 @@ def plot_pos_over_time(fold, id_ex, max_path_length=250, list_paths=None):
     for i_path in list_paths:
         data    =   paths[i_path]['observation']
         targets =   paths[i_path]['target']
-
+        
         """ Plot distributions of positions in X-Y, X-Z, Y-Z"""
         x_data   =   data[:max_path_length, index_start_pos]
         y_data   =   data[:max_path_length, index_start_pos + 1]
@@ -177,7 +177,7 @@ def plot_pos_over_time(fold, id_ex, max_path_length=250, list_paths=None):
     plt.show()
 
 # Example of its usage
-plot_pos_over_time('./data/sample16/', '10', list_paths=[19])
+#plot_pos_over_time('./data/sample16/', '11', list_paths=[19])
 
 def plot_ang_velocity(fold, id_ex, list_paths=None):
     path_name   =   compute_restore_file(fold, id_ex)
@@ -375,4 +375,4 @@ def plot_3Dtrajectory(fold, id_ex, list_paths=None):
 
     plt.show()
 
-plot_3Dtrajectory('./data/sample16/','10', list_paths=[19])
+#plot_3Dtrajectory('./data/sample16/','11', list_paths=[19])
