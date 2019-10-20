@@ -1,7 +1,7 @@
 from mbrl.network import Dynamics
 from mbrl.parallel_env import ParallelVrepEnv
 from mbrl.runner import Runner
-from mbrl.wrapped_env import QuadrotorEnv
+from mbrl.wrapped_env import QuadrotorEnv, QuadrotorAcelEnv
 from mbrl.mpc import RandomShooter
 from mbrl.train_mb import Trainer
 
@@ -40,7 +40,7 @@ from tensorboardX import SummaryWriter
 
 config  =   {
     # General parameters #
-    "id_executor"           :   'sample15',
+    "id_executor"           :   'sample24',
     "n_iterations"          :   256,
 
     # MPC Controller - Random Shooting #
@@ -51,10 +51,12 @@ config  =   {
 
     # Environment Setting & runner #
     
+    "env_name"              :   'QuadrotorAcelEnv',
     "max_path_length"       :   250,
     "total_tsteps_per_run"  :   10000,
     "reward_type"           :   'type1',
-    "crippled_rotor"        :   1,
+    "crippled_rotor"        :   None,
+    "time_step_size"        :   0.050,  #seconds
     # Training Parameters #
     
     "batch_size"            :   500,
@@ -83,9 +85,10 @@ save_path               =   os.path.join('./data/', config['id_executor'])
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-env_ = QuadrotorEnv(port=27001, reward_type=config['reward_type'], fault_rotor=config['crippled_rotor']) # 28
+env_class   =   DecodeEnvironment(config['env_name'])
+env_ = env_class(port=27001, reward_type=config['reward_type'], fault_rotor=config['crippled_rotor']) # 28
 #vecenv=ParallelVrepEnv(ports=[25001,28001], max_path_length=250, envClass=QuadrotorEnv)
-vecenv=ParallelVrepEnv(ports=[19999, 20001,21001,22001], max_path_length=config['max_path_length'], envClass=QuadrotorEnv, reward_type=config['reward_type'], cripple_rotor=config['crippled_rotor'])
+vecenv=ParallelVrepEnv(ports=[19999, 20001,21001,22001], max_path_length=config['max_path_length'], envClass=env_class, reward_type=config['reward_type'], cripple_rotor=config['crippled_rotor'])
 state_shape         =   env_.observation_space.shape
 action_shape        =   env_.action_space.shape
 activation_function =   DecodeActFunction(config['activation_function'])

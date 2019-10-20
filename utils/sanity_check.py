@@ -45,6 +45,7 @@ class SanityCheck:
         self.trajectory         =   traj
         self.max_path_length    =   max_path_length
         self.nstack             =   dynamics.stack_n
+        self.obs_flat_size      =   self.env.observation_space.shape[0]
 
 
 
@@ -81,7 +82,7 @@ class SanityCheck:
             art_states.append(next_obs)
             art_actions.append(next_action)
 
-        return (gt_states[:, 18 * (self.nstack - 1):], gt_actions[:,self.env.action_space.shape[0] * (self.nstack - 1):]), (np.stack(art_states, axis=0), np.stack(art_actions,axis=0))
+        return (gt_states[:, self.obs_flat_size * (self.nstack - 1):], gt_actions[:,self.env.action_space.shape[0] * (self.nstack - 1):]), (np.stack(art_states, axis=0), np.stack(art_actions,axis=0))
 
     def analize_errors(self, gt_states, ar_states):
         import matplotlib.pyplot as plt

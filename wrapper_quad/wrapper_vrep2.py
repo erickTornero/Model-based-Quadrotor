@@ -39,7 +39,7 @@ class VREPQuadAccel(gym.Env):
 
         self.action_space       =   spaces.Box(low=0.0, high=100.0, shape=(4,), dtype=np.float32)
 
-        self.observation_space  =   spaces.Box(low=-np.inf, high=np.inf, shape=(18,), dtype=np.float32)
+        self.observation_space  =   spaces.Box(low=-np.inf, high=np.inf, shape=(19,), dtype=np.float32)
 
         # Get scripts propellers Here...!
         #self.propsignal =   ['joint' + str(i+1) for i in range(0, 4)]
@@ -143,6 +143,7 @@ class VREPQuadAccel(gym.Env):
         if compute_acelleration == True: lin_acel, ang_acel  =   self.compute_aceleration(lin_vel, ang_vel)
         else: lin_acel, ang_acel =   np.zeros(3, dtype=np.float32), np.zeros(3, dtype=np.float32) 
 
+        position            =   position - self.targetpos
         return position, orientation, lin_vel, ang_vel, lin_acel, ang_acel
 
     def compute_aceleration(self, linv, angv):
@@ -152,6 +153,32 @@ class VREPQuadAccel(gym.Env):
         anga = (angv-self.prev_angvel)/self.dt
 
         return lina, anga
+    
+    def _set_boolparam(self, parameter: int, value: bool) -> NoReturn:
+        """Sets boolean parameter of V-REP simulation.
+        Args:
+            parameter: Parameter to be set.
+            value: Boolean value to be set.
+        """
+        res = vrep.simxSetBooleanParameter(self.clientID, parameter, value,
+                                           vrep.simx_opmode_oneshot)
+        assert (res == vrep.simx_return_ok or res == vrep.simx_return_novalue_flag), (
+            'Could not set boolean parameter!')
+            
+    def _get_boolparam(self, parameter: int) -> bool:
+        res, value = vrep.simxGetBooleanParameter(self.clientID, parameter,
+                                                  vrep.simx_opmode_oneshot)
+        assert (res == vrep.simx_return_ok or res == vrep.simx_return_novalue_flag), (
+            'Could not get boolean parameter!')
+        return value
+    
+    def _clear_gui(self) -> NoReturn:
+        """Clears GUI with unnecessary elements like model hierarchy, library browser and
+        console. Also this method enables threaded rendering.
+        """
+        self._set_boolparam(vrep.sim_boolparam_hierarchy_visible, False)
+        self._set_boolparam(vrep.sim_boolparam_console_visible, False)
+        self._set_boolparam(vrep.sim_boolparam_browser_visible, False)
 
     def _getGaussVectorOrientation(self): 
         x = [gauss(0, 0.6) for _ in range(3)]

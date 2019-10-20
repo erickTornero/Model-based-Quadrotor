@@ -1,5 +1,7 @@
 from wrapper_quad.wrapper_vrep import VREPQuad
+from wrapper_quad.wrapper_vrep2 import VREPQuadAccel
 import numpy as np
+import torch
 
 class QuadrotorEnv(VREPQuad):
     def __init__(self, port, reward_type, fault_rotor=None):
@@ -11,12 +13,12 @@ class QuadrotorEnv(VREPQuad):
         if self.faultmotor is not None:
             assert fault_rotor < 4, 'Choose a fault rotor in range of [0-3]'
             self.mask[self.faultmotor]  =   0.0
-            print('Quadrotor Environment Initialized with rotor {} faulted'.format(self.faultmotor))
-        else: print('Quadrotor Initialized in fault-free case')
+            print('QuadrotorEnv Initialized with rotor {} faulted, and reward: {}'.format(self.faultmotor, reward_type))
+        else: print('QuadrotorEnv Initialized in fault-free case, and reward: {}'.format(reward_type))
         
         """ Initialize Reward function """
         if reward_type  ==  'type1':
-            self.reward =   self.distance_reward
+            self.reward =   self.distance_reward_torch
         elif reward_type == 'type2':
             self.reward =   self.roll_pitch_vel_penalized
         elif reward_type == 'type3':
@@ -43,6 +45,13 @@ class QuadrotorEnv(VREPQuad):
 
         #print(reward)
         return  reward
+    def distance_reward_torch(self, next_obs):
+        currpos =   next_obs[:, 9:12]
+
+        distance    =   torch.sqrt(torch.sum(currpos * currpos, dim=1))
+
+        reward      =   4.0 - 1.25 * distance
+        return reward
 
     def roll_pitch_vel_penalized(self, next_obs):
         # rangues varing from [-10.0 to 10.0] we devide between 10 to scale
@@ -94,3 +103,36 @@ class QuadrotorEnv(VREPQuad):
     def set_targetpos(self, tpos:np.ndarray):
         assert tpos.shape[0]    ==  3
         self.targetpos  =   tpos
+    
+
+class QuadrotorAcelEnv(VREPQuadAccel):
+    def __init__(self, port, reward_type, fault_rotor=None):
+        super(QuadrotorAcelEnv, self).__init__(port=port)
+        
+        self.faultmotor =   fault_rotor
+        self.mask       =   np.ones(4, dtype=np.float32)
+                
+        if self.faultmotor is not None:
+            assert fault_rotor < 4, 'Choose a fault rotor in range of [0-3]'
+            self.mask[self.faultmotor]  =   0.0
+            print('QuadrotorAcelEnv Initialized with rotor {} faulted, and reward: {}'.format(self.faultmotor, reward_type))
+        else: print('QuadrotorAcelEnv Initialized in fault-free case, and reward: {}'.format(reward_type))
+        
+        """ Initialize Reward function """
+        if reward_type  ==  'type1':
+            self.reward =   self.distance_reward
+        else:
+            assert True, 'Error: No valid reward function: example: ("type1")'
+        
+
+    def step(self, action:np.ndarray):
+        fault_action    =   self.mask * action
+        return super(QuadrotorAcelEnv, self).step(fault_action)
+
+    def distance_reward(self, next_obs):
+        currpos =   next_obs[:, 0:3]
+
+        distance    =   torch.sqrt(torch.sum(currpos * currpos, dim=1))
+
+        reward      =   4.0 - 1.25 * distance
+        return reward
