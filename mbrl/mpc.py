@@ -21,7 +21,8 @@ class RandomShooter:
         self.device     =   device
 
         self.stack_n    =   self.dynamics.stack_n
-        self.batch_as   =   BatchStacks(self.act_space.shape, self.obs_space.shape, self.stack_n, self.candidates, device)
+        #self.batch_as   =   BatchStacks(self.act_space.shape, self.obs_space.shape, self.stack_n, self.candidates, device)
+        self.batch_as   =   BatchStacksTorch(self.act_space.shape, self.obs_space.shape, self.stack_n, self.candidates, device)
 
     def get_action(self, obs_):
         """
@@ -59,6 +60,36 @@ class RandomShooter:
         #idx_min_ret =   np.argmin(returns)
         #print(returns[idx_min_ret], returns[idx_max_ret])
         return action_c[np.argmax(returns)]
+    
+    def get_action_torch(self, obs_):
+        obs_np, acts_np =   obs_.get()
+        self.batch_as.restart(torch.tensor(obs_np, dtype=torch.float32, device=self.device), torch.tensor(acts_np, dtype=torch.float32, device=self.device))
+        h   =   self.horizon
+        c   =   self.candidates
+        returns =   torch.zeros((c,), dtype=torch.float32, device=self.device)
+
+        #must_change to torch
+        actions =   self.get_random_actions_torch(h * c).reshape((h, c) + self.act_space.shape)
+
+        actions =   actions.reshape((h, c, self.act_space.shape[0]))
+        for t in range(h):
+            if t == 0:
+                action_c    =   actions[t]
+            
+            self.batch_as.slide_action_stack(actions[t])
+            obs_flat    =   self.batch_as.get()
+            # must change to torch
+            obs_flat    =   self.normalize_torch(obs_flat)
+
+            # must
+            next_obs    =   self.dynamics.predict_next_obs(obs_flat, self.device)
+            # must return in torch
+            rewards     =   self.env.reward(next_obs)
+            returns     =   returns + self.discount**t*rewards
+
+            self.batch_as.slide_state_stack(next_obs)
+
+        return np.asarray(action_c[torch.argmax(returns).item()].to('cpu'))
 
     def get_action_CEM(self, obs_, J:int, M:int, alpha:int):
         """
@@ -104,13 +135,13 @@ class RandomShooter:
                 returns     =   returns + self.discount**t*rewards
 
                 self.batch_as.slide_state_stack(next_obs)
-
+            
             best_j_indexes =   np.argsort(returns)[-J:][::-1]
-            best_j_actions  =   actions[np.ix_([best_j_indexes])]
+            best_j_actions  =   actions[np.ix_(best_j_indexes)]
             actions_mean    =   alpha * np.mean(best_j_actions, axis=0) + actions_mean * (1 - alpha)
             actions_std     =   alpha * np.std(best_j_actions,  axis=0) + actions_std * (1 - alpha)
 
-        return best_j_actions[0]
+        return best_j_actions[0][0]
 
     def get_action_PDDM(self, obs_, gamma, beta):
         import copy
@@ -173,9 +204,17 @@ class RandomShooter:
     def get_random_actions(self, n):
         return np.random.uniform(low=self.act_space.low, high=self.act_space.high, size=(n,)+self.act_space.shape)
     
+    def get_random_actions_torch(self, n):
+        acts    =   np.random.uniform(low=self.act_space.low, high=self.act_space.high, size=(n,)+self.act_space.shape)
+        return torch.tensor(acts, dtype=torch.float32, device=self.device)
+
     def normalize_(self, obs):
         assert self.dynamics.mean_input is not None
         return (obs - self.dynamics.mean_input)/(self.dynamics.std_input + self.dynamics.epsilon)
+    def normalize_torch(self, obs):
+        assert self.dynamics.mean_input is not None
+        return (obs - torch.tensor(self.dynamics.mean_input, dtype=torch.float32, device=self.device))/(torch.tensor(self.dynamics.std_input, dtype=torch.float32, device=self.device)+self.dynamics.epsilon)
+
     def denormalize_(self, obs):
         assert self.dynamics.mean_input is not None
         return obs * (self.dynamics.std_input + self.dynamics.epsilon) + self.dynamics.mean_input

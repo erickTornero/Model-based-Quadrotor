@@ -54,8 +54,10 @@ class Runner:
                 # Get next action given stat of actions and states
                 #obs_stack, act_stack = stack_as.get()
                 #actions = mpc.get_action(obs_stack, act_stack[1:])
-                actions =   np.stack([self.mpc.get_action_PDDM(stack_, 5.0, 0.6) for stack_ in stack_as], axis=0)
+                #actions =   np.stack([self.mpc.get_action_PDDM(stack_, 5.0, 0.6) for stack_ in stack_as], axis=0)
                 #actions =   np.stack([self.mpc.get_action(stack_) for stack_ in stack_as], axis=0)
+                #actions =   np.stack([self.mpc.get_action_CEM(stack_, 50, 3, 0.8) for stack_ in stack_as], axis=0)
+                actions =   np.stack([self.mpc.get_action_torch(stack_) for stack_ in stack_as], axis=0)
 
             next_obs, rewards, dones, env_infos = self.vec_env.step(actions)
 
@@ -103,7 +105,7 @@ class Runner:
                     stack_.append(obs=next_ob)
             
             #[stack_.append(obs=next_ob) for next_ob, stack_ in zip(next_obs, stack_as)]
-        
+        pbar.close()
         sampled_data = self.dProcesor.process(paths)
 
         return sampled_data
