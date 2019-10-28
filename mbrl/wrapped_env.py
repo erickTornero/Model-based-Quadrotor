@@ -1,5 +1,6 @@
 from wrapper_quad.wrapper_vrep import VREPQuad
 from wrapper_quad.wrapper_vrep2 import VREPQuadAccel
+from wrapper_quad.wrapper_vrep3 import VREPQuadSimple
 import numpy as np
 import torch
 
@@ -128,6 +129,39 @@ class QuadrotorAcelEnv(VREPQuadAccel):
     def step(self, action:np.ndarray):
         fault_action    =   self.mask * action
         return super(QuadrotorAcelEnv, self).step(fault_action)
+
+    def distance_reward(self, next_obs):
+        currpos =   next_obs[:, 0:3]
+
+        distance    =   torch.sqrt(torch.sum(currpos * currpos, dim=1))
+
+        reward      =   4.0 - 1.25 * distance
+        return reward
+
+
+class QuadrotorSimpleEnv(VREPQuadSimple):
+    def __init__(self, port, reward_type, fault_rotor=None):
+        super(QuadrotorSimpleEnv, self).__init__(port=port)
+        
+        self.faultmotor =   fault_rotor
+        self.mask       =   np.ones(4, dtype=np.float32)
+                
+        if self.faultmotor is not None:
+            assert fault_rotor < 4, 'Choose a fault rotor in range of [0-3]'
+            self.mask[self.faultmotor]  =   0.0
+            print('QuadrotorAcelEnv Initialized with rotor {} faulted, and reward: {}'.format(self.faultmotor, reward_type))
+        else: print('QuadrotorAcelEnv Initialized in fault-free case, and reward: {}'.format(reward_type))
+        
+        """ Initialize Reward function """
+        if reward_type  ==  'type1':
+            self.reward =   self.distance_reward
+        else:
+            assert True, 'Error: No valid reward function: example: ("type1")'
+        
+
+    def step(self, action:np.ndarray):
+        fault_action    =   self.mask * action
+        return super(QuadrotorSimpleEnv, self).step(fault_action)
 
     def distance_reward(self, next_obs):
         currpos =   next_obs[:, 0:3]

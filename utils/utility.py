@@ -3,7 +3,7 @@ import json
 import torch
 
 from mbrl.mpc import RandomShooter, CrossEntropyMethod
-from mbrl.wrapped_env import QuadrotorEnv, QuadrotorAcelEnv
+from mbrl.wrapped_env import QuadrotorEnv, QuadrotorAcelEnv, QuadrotorSimpleEnv
 
 def DecodeMPC(name_mpc:str):
     if name_mpc == 'RandomShooter':
@@ -33,6 +33,8 @@ def DecodeEnvironment(name_env:str):
         return QuadrotorEnv
     elif name_env == QuadrotorAcelEnv.__name__:
         return QuadrotorAcelEnv
+    elif name_env == QuadrotorSimpleEnv.__name__:
+        return QuadrotorSimpleEnv
     else:
         assert True, 'insert valid Environment_name'
     
