@@ -4,6 +4,8 @@ from rolls import rollouts
 from mbrl.runner import StackStAct
 from mbrl.wrapped_env import QuadrotorEnv
 from utils.gen_trajectories import Trajectory
+
+from utils.analize_dynamics import plot_error_map
 import numpy as np
 import torch
 
@@ -35,7 +37,7 @@ class SanityCheck:
         max_path_length :   The maximum length of a path
     """
 
-    def __init__(self, h, c, dynamics:Dynamics, mpc, env, t_init, traj, max_path_length=250):
+    def __init__(self, h, c, dynamics:Dynamics, mpc, env, t_init, traj, n_steps=1, max_path_length=250):
         self.horizon            =   h
         self.candidates         =   c
         self.dynamics           =   dynamics
@@ -46,6 +48,7 @@ class SanityCheck:
         self.max_path_length    =   max_path_length
         self.nstack             =   dynamics.stack_n
         self.obs_flat_size      =   self.env.observation_space.shape[0]
+        self.n_steps            =   n_steps
 
 
 
@@ -54,35 +57,40 @@ class SanityCheck:
         #set_trace()
         path    =   rollouts(self.dynamics, self.env, self.mpc, 1, self.max_path_length, None, self.trajectory)
         #gt_states   =   path[0]['observation'][self.t_init:, 18*(self.nstack-1):]
-        gt_states   =   path[0]['observation'][self.t_init:self.t_init + self.horizon,:]
-        gt_actions  =   path[0]['actions'][self.t_init:self.t_init + self.horizon,:]
+        assert path[0]['rewards'].shape[0] > self.t_init + self.horizon + self.n_steps - 1, 'Too short path, try again!'
+        gt_states   =   path[0]['observation'][self.t_init:self.t_init + self.horizon + self.n_steps - 1,:]
+        gt_actions  =   path[0]['actions'][self.t_init:self.t_init + self.horizon + self.n_steps - 1,:]
 
-        init_stackobs    =  gt_states[0].reshape(self.nstack, -1)
-        init_stackacts   =  gt_actions[0].reshape(self.nstack, -1)
-           
-        stack_as = StackStAct(self.env.action_space.shape, self.env.observation_space.shape, n=self.nstack)
+        L = []
 
-        stack_as.fill_with_stack(init_stackobs, init_stackacts)
-        
-        device      =   next(self.dynamics.parameters()).device
-        art_states  =   [stack_as.get_last_state()]
-        art_actions =   [stack_as.get_last_action()]
+        for step in range(self.n_steps):
+            init_stackobs    =  gt_states[step].reshape(self.nstack, -1)
+            init_stackacts   =  gt_actions[step].reshape(self.nstack, -1)
+            
+            stack_as = StackStAct(self.env.action_space.shape, self.env.observation_space.shape, n=self.nstack)
 
-        for i in range(1, self.horizon):
-            obs_, acts_ =   stack_as.get()
-            obs_flat    =   np.concatenate((obs_.flatten(), acts_.flatten()), axis=0)   
-            obs_flat    =   self.mpc.normalize_(obs_flat)
-            obs_tensor  =   torch.tensor(obs_flat, dtype=torch.float32, device=device)
-            obs_tensor.unsqueeze_(0)
-            next_obs    =   self.dynamics.predict_next_obs(obs_tensor, device).to('cpu')
-            next_obs    =   np.asarray(next_obs.squeeze(0))
-            next_action =   gt_actions[i,self.env.action_space.shape[0] * (self.nstack - 1):]
-            stack_as.append(next_obs, next_action)
+            stack_as.fill_with_stack(init_stackobs, init_stackacts)
+            
+            device      =   next(self.dynamics.parameters()).device
+            art_states  =   [stack_as.get_last_state()]
+            art_actions =   [stack_as.get_last_action()]
 
-            art_states.append(next_obs)
-            art_actions.append(next_action)
+            for i in range(1, self.horizon):
+                obs_, acts_ =   stack_as.get()
+                obs_flat    =   np.concatenate((obs_.flatten(), acts_.flatten()), axis=0)   
+                obs_flat    =   self.mpc.normalize_(obs_flat)
+                obs_tensor  =   torch.tensor(obs_flat, dtype=torch.float32, device=device)
+                obs_tensor.unsqueeze_(0)
+                next_obs    =   self.dynamics.predict_next_obs(obs_tensor, device).to('cpu')
+                next_obs    =   np.asarray(next_obs.squeeze(0))
+                next_action =   gt_actions[i,self.env.action_space.shape[0] * (self.nstack - 1):]
+                stack_as.append(next_obs, next_action)
 
-        return (gt_states[:, self.obs_flat_size * (self.nstack - 1):], gt_actions[:,self.env.action_space.shape[0] * (self.nstack - 1):]), (np.stack(art_states, axis=0), np.stack(art_actions,axis=0))
+                art_states.append(next_obs)
+                art_actions.append(next_action)
+
+            L.append(((gt_states[step:step + self.horizon, self.obs_flat_size * (self.nstack - 1):], gt_actions[step:step+self.horizon,self.env.action_space.shape[0] * (self.nstack - 1):]), (np.stack(art_states, axis=0), np.stack(art_actions,axis=0))))
+        return L
 
     def analize_errors(self, gt_states, ar_states):
         import matplotlib.pyplot as plt
@@ -90,6 +98,10 @@ class SanityCheck:
         t       =   np.arange(len(errors))
         plt.plot(t, errors)
         plt.show()
+    def get_errors(self, gt_states, ar_states):
+        errors  =   np.sqrt(np.sum((gt_states-ar_states)*(gt_states-ar_states), axis=1))
+        return errors
+
     def analize_pos_error(self, gt_states, ar_states):
         import matplotlib.pyplot as plt
         gt_pos  =   gt_states[:, 9:12]
@@ -110,7 +122,7 @@ if __name__ == "__main__":
         config_train    =   json.load(fp)
 
     config      =   {
-        "horizon"           :   20,
+        "horizon"           :   15,
         "candidates"        :   1500,
         "discount"          :   0.99,
         "t_init"            :   30,
@@ -119,7 +131,8 @@ if __name__ == "__main__":
         "reward_type"       :   'type1',
         "max_path_length"   :   250,
         "nrollouts"         :   20,
-        "trajectory_type"   :   'sin-vertical',
+        "n_steps"           :   20,
+        "trajectory_type"   :   'stepped',
         "sthocastic"        :   False,
         "hidden_layers"     :   config_train['hidden_layers'],
         "crippled_rotor"    :   config_train['crippled_rotor']
@@ -141,16 +154,27 @@ if __name__ == "__main__":
     dynamics.epsilon    =   checkpoint['epsilon']
 
     dynamics.to(device)
-    #set_trace()
+    set_trace()
     """ Send a Trajectory to follow"""
     trajectoryManager   =   Trajectory(config['max_path_length'], 2)
     trajectory          =   trajectoryManager.gen_points(config['trajectory_type']) if config['trajectory_type'] is not None else None
 
-    scheck              =   SanityCheck(config['horizon'],config['candidates'],dynamics,rs,env_, config['t_init'], trajectory, config['max_path_length'])
+    scheck              =   SanityCheck(config['horizon'],config['candidates'],dynamics,rs,env_, config['t_init'], trajectory, config['n_steps'], config['max_path_length'])
 
-    (gt_s, gt_a), (ar_s, ar_a)  =   scheck.get_state_actions()
-    scheck.analize_errors(gt_s,ar_s)
-    scheck.analize_pos_error(gt_s,ar_s)
+    #(gt_s, gt_a), (ar_s, ar_a)  =   scheck.get_state_actions()
+    L   =   scheck.get_state_actions()
+    #scheck.analize_errors(gt_s,ar_s)
+    #scheck.analize_pos_error(gt_s,ar_s)
+    
+    error_list  =   []
+    for (gt_s, gt_a), (ar_s, ar_a) in L:
+        errors  =   scheck.get_errors(gt_s, ar_s)
+        error_list.append(errors)
+    errors  =   np.vstack(error_list)
+
+    #errors  =   np.repeat(errors, 15).reshape(15,15)
+    plot_error_map(errors.T, _vmax=10.0)
+
     env_.close()
 
     print(10)

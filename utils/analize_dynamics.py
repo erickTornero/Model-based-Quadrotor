@@ -2,22 +2,12 @@ import matplotlib.pyplot as plt
 from matplotlib import colors
 import numpy as np
 
-data = np.random.randn(10,10) * 20
-cdic    =   {'red':((0.0,0.0,0.0),(0.5,1.0,1.0),(1.0,0.8,0.8)),
-             'green':((0.0,0.8,0.8),(0.5,1.0,1.0),(1.0,0.0,0.0)),
-             'blue':((0.0,0.0,0.0),(0.5,1.0,1.0),(1.0,0.0,0.0))
-            }
-gnrd=colors.LinearSegmentedColormap('bn',cdic)
-#cmap = colors.ListedColormap(['red', 'blue'])
+def plot_error_map(data, traj_len=15, cmap_name='OrRd', _vmin=0.0, _vmax=5.0):
+    fig, ax = plt.subplots(1)
+    p = ax.pcolormesh(data, cmap=plt.get_cmap(cmap_name), vmin=_vmin,vmax=_vmax)
+    fig.colorbar(p, ax=ax)
+    plt.show()
 
+#dummydata = np.random.normal(0.0, 1.0, (15,15))
+#plot_error_map(dummydata)
 
-
-#bounds = [0, 10, 20]
-
-#norm = colors.BoundaryNorm(bounds, cmap.N)
-
-fig, ax = plt.subplots(1)
-dummydata = np.random.randn(15,15) *6.-3.
-p = ax.pcolormesh(dummydata, cmap=gnrd, vmin=-3,vmax=3)
-fig.colorbar(p,ax=ax)
-plt.show()

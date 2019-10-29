@@ -51,7 +51,7 @@ def rollouts(dynamics:Dynamics, env:QuadrotorEnv, mpc:RandomShooter, n_rolls=20,
             env.set_targetpos(next_target_pos)
 
             #action = mpc.get_action_PDDM(stack_as, 0.6, 5)
-            action = mpc.get_action(stack_as)
+            action = mpc.get_action_torch(stack_as)
                
             next_obs, reward, done, env_info =   env.step(action)
 
