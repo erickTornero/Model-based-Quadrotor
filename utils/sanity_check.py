@@ -2,12 +2,14 @@ from mbrl.network import Dynamics
 from mbrl.mpc import RandomShooter
 from rolls import rollouts
 from mbrl.runner import StackStAct
-from mbrl.wrapped_env import QuadrotorEnv
+from mbrl.wrapped_env import QuadrotorEnv, QuadrotorAcelRotmat
 from utils.gen_trajectories import Trajectory
 
 from utils.analize_dynamics import plot_error_map
+from utils.utility import DecodeEnvironment
 import numpy as np
 import torch
+
 
 from IPython.core.debugger import set_trace
 
@@ -49,6 +51,84 @@ class SanityCheck:
         self.nstack             =   dynamics.stack_n
         self.obs_flat_size      =   self.env.observation_space.shape[0]
         self.n_steps            =   n_steps
+
+
+    def rollouts(self, dynamics, envs, mpc, n_rolls, min_path_length=100, max_path_length=250):
+        trajectory  =   self.trajectory
+        nstack  =   dynamics.stack_n
+        paths   =   []
+        flat_functions  =   [_env._flat_observation for _env in envs]
+        if trajectory is None:
+            targetposition  =   0.8 * np.ones(3, dtype=np.float32)
+        else:
+            targetposition  =   trajectory[0]
+        
+        next_target_pos =   targetposition
+        
+
+        self.env.set_targetpos(targetposition)
+        obs = self.env.reset()
+        obses           =   self.env.last_observation
+        obses           =   [flat_fn(obses) for flat_fn in flat_functions]
+        
+        stack_as_list = [StackStAct(self.env.action_space.shape, self.env.observation_space.shape, n=nstack, init_st=obs) for ob in obses]
+        stack_as_policy =   stack_as_list[0]
+        done = False
+        timestep    =   0
+        cum_reward  =   0.0
+
+        running_paths=[dict(observations=[], actions=[], rewards=[], dones=[], next_obs=[], target=[]) for _ in range(len(flat_functions))]
+
+        while not done and timestep < max_path_length:
+            
+            if timestep == 120 and trajectory is None:
+                next_target_pos  = np.zeros(3, dtype=np.float32)
+            elif trajectory is not None:
+                next_target_pos =   trajectory[timestep + 1]
+
+            self.env.set_targetpos(next_target_pos)
+
+            #action = mpc.get_action_PDDM(stack_as, 0.6, 5)
+            action = mpc.get_action_torch(stack_as_policy)
+               
+            next_obs, reward, done, _   =  self.env.step(action)
+
+            [stack_as.append(acts=action) for stack_as in stack_as_list]
+            #stack_as_policy.append(acts=action)
+            
+            #if save_paths is not None:
+            for idx, stack_as in zip(range(len(flat_functions)), stack_as_list):
+                observation, action = stack_as.get()
+                running_paths[idx]['observations'].append(observation.flatten())
+                running_paths[idx]['actions'].append(action.flatten())
+                running_paths[idx]['rewards'].append(reward)
+                running_paths[idx]['dones'].append(done)
+                running_paths[idx]['next_obs'].append(next_obs)
+                running_paths[idx]['target'].append(targetposition)
+
+            #if done or len(running_paths['rewards']) >= max_path_length:
+            #    #print('ohhhh')
+            #    paths.append(dict(
+            #        observation=np.asarray(running_paths['observations']),
+            #        actions=np.asarray(running_paths['actions']),
+            #        rewards=np.asarray(running_paths['rewards']),
+            #        dones=np.asarray(running_paths['dones']),
+            #        next_obs=np.asarray(running_paths['next_obs']),
+            #        target=np.asarray(running_paths['target'])
+            #    ))
+            
+            
+            targetposition  =   next_target_pos
+            obses           =   self.env.last_observation
+
+            [stack_as.append(obs=flat_functions(obses)) for flat_fn in flat_functions]
+
+            #stack_as.append(obs=next_obs)
+            cum_reward  +=  reward
+            timestep += 1
+        
+        return running_paths
+
 
 
 
@@ -115,13 +195,14 @@ if __name__ == "__main__":
     import os
     import json
 
-    restore_folder  ='./data/sample16/'
+    restore_folder  ='./data/sample28/'
     #save_paths_dir  =   os.path.join(restore_folder, 'rolls'+id_execution_test)
     #save_paths_dir  =   None
     with open(os.path.join(restore_folder,'config_train.json'), 'r') as fp:
         config_train    =   json.load(fp)
 
     config      =   {
+        "env_name"          :   config_train['env_name'],
         "horizon"           :   15,
         "candidates"        :   1500,
         "discount"          :   0.99,
@@ -137,8 +218,8 @@ if __name__ == "__main__":
         "hidden_layers"     :   config_train['hidden_layers'],
         "crippled_rotor"    :   config_train['crippled_rotor']
     }
-
-    env_            =   QuadrotorEnv(port=28001, reward_type=config['reward_type'], fault_rotor=config['crippled_rotor'])
+    env_class       =   DecodeEnvironment(config['env_name'])
+    env_            =   env_class(port=28001, reward_type=config['reward_type'], fault_rotor=config['crippled_rotor'])
     state_shape     =   env_.observation_space.shape
     action_shape    =   env_.action_space.shape
 
@@ -174,6 +255,15 @@ if __name__ == "__main__":
 
     #errors  =   np.repeat(errors, 15).reshape(15,15)
     plot_error_map(errors.T, _vmax=10.0)
+
+    (gt_s, gt_a), (ar_s, ar_a) = L[0]
+
+    scheck.analize_errors(gt_s, ar_s)
+
+    (gt_s, gt_a), (ar_s, ar_a) = L[4]
+
+    scheck.analize_errors(gt_s, ar_s)
+    
 
     env_.close()
 
