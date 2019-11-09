@@ -204,28 +204,38 @@ class SanityCheck:
     def normalize_input(self, dynamics, obs):
         assert dynamics.mean_input is not None
         return (obs - dynamics.mean_input)/(dynamics.std_input + dynamics.epsilon)
+    
+    """ 
+        Compute quadratic error 
+        ::Assume numpy inputs
+    """
+    def compute_quadratic_error(self, state1, state2):
+        difference  =   state1- state2
+        return np.sqrt(np.sum(difference * difference, axis=0))
 
     def process_states(self, samples_names):
+        set_trace()
         paths = self.get_ground_thruth_states(samples_names)
 
         configfiles =   self._get_configfiles(samples_names)
         envsclasses    =   self._get_environments(configfiles)
         action_spaces   =   [envclass._get_action_space() for envclass in envsclasses]
         state_spaces    =   [envclass._get_state_space() for envclass in envsclasses]
-        assert path[0]['rewards'].shape[0] > self.t_init + self.horizon + self.n_steps - 1, 'Too short path, try again!'
+        path_length         =   len(paths[0]['observations'])
+        assert path_length > self.t_init + self.horizon + self.n_steps - 1, 'Too short path, try again!'
         
         device              =   torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
         dynamics_list       =   self._load_dynamics(samples_names, device)
-        path_length         =   len(paths[0]['observations'])   
+           
         indexes             =   random.sample(range(self.t_init, path_length - self.horizon), self.n_steps)
         indexes.sort()
 
         """ Collect samples over states collected"""
-        states              =   [[path['observations'][idx + self.horizon] for idx in indexes] for path in paths]
-        actions             =   [[path['actions'][idx + self.horizon] for idx in indexes] for path in paths]
+        states              =   [[path['observations'][idx:idx+self.horizon] for idx in indexes] for path in paths]
+        actions             =   [[path['actions'][idx:idx+self.horizon] for idx in indexes] for path in paths]
 
         """ Concat corresponding state & actions """
-        observations_paths  =   [[np.concatenate((state_unit, action_unit)) for state_unit, action_unit in zip(state_path, action_path)] for state_path, action_path in zip(states, actions)]
+        #observations_paths  =   [[np.concatenate((state_unit, action_unit)) for state_unit, action_unit in zip(state_path, action_path)] for state_path, action_path in zip(states, actions)]
 
         #normalized_observations =   [[self.normalize_input(dynamics, obs) for obs in obs_path] for obs_path, dynamics in zip(observations_paths, dynamics_list)]
 
@@ -235,33 +245,37 @@ class SanityCheck:
             for _step, _states_gt, _actions_gt in zip(count(), _states_path, _actions_path):
                 init_stackobs    =  _states_gt[0].reshape(nstack, -1)
                 init_stackacts   =  _actions_gt[0].reshape(nstack, -1)
-                stack_as = StackStAct(self.env.action_space.shape, self.env.observation_space.shape, n=self.nstack)
+                stack_as = StackStAct(action_space.shape, state_space.shape, n=nstack)
                 stack_as.fill_with_stack(init_stackobs, init_stackacts)
-                for _h, in range(1, self.horizon):
+                for _h in range(1, self.horizon):
                     obs_, acts_             =   stack_as.get()
                     obs_flat                =   np.concatenate((obs_.flatten(), acts_.flatten()), axis=0)
                     obs_flat                =   self.normalize_input(dynamics, obs_flat)
                     obs_tensor              =   torch.tensor(obs_flat, dtype=torch.float32, device=device)
                     obs_tensor.unsqueeze_(0)
-                    next_obs                =   self.dynamics.predict_next_obs(obs_tensor, device).to('cpu')
+                    next_obs                =   dynamics.predict_next_obs(obs_tensor, device).to('cpu')
                     next_obs                =   np.asarray(next_obs.squeeze(0))
                     next_action             =   _actions_gt[_h][-action_space.shape[0]:]
                     stack_as.append(next_obs, next_action)
 
-                    art_states.append(next_obs)
+                    gt_obs                  =   _states_gt[_h][-state_space.shape[0]:]
+                    error_                  =   self.compute_quadratic_error(gt_obs, next_obs)
+                    error_matrixes[_h, _step, _idx] =   error_
+
+                    #art_states.append(next_obs)
                     #normalize_observation   =   self.normalize_input(dynamics, observations)
                     #normalize_observation   =   torch.tensor(normalize_observation, dtype=torch.float32, device=device)
 
         print('Deal with normalized observation')
         #return normalized_observations
-
+        return error_matrixes
 
     def get_state_actions(self):
         """ Generate one rollout """
         #set_trace()
         path    =   rollouts(self.dynamics, self.env, self.mpc, 1, self.max_path_length, None, self.trajectory)
         #gt_states   =   path[0]['observation'][self.t_init:, 18*(self.nstack-1):]
-        assert path[0]['rewards'].shape[0] > self.t_init + self.horizon + self.n_steps - 1, 'Too short path, try again!'
+        assert len(path[0]['observations']) > self.t_init + self.horizon + self.n_steps - 1, 'Too short path, try again!'
         gt_states   =   path[0]['observation'][self.t_init:self.t_init + self.horizon + self.n_steps - 1,:]
         gt_actions  =   path[0]['actions'][self.t_init:self.t_init + self.horizon + self.n_steps - 1,:]
 
@@ -302,6 +316,7 @@ class SanityCheck:
         t       =   np.arange(len(errors))
         plt.plot(t, errors)
         plt.show()
+    
     def get_errors(self, gt_states, ar_states):
         errors  =   np.sqrt(np.sum((gt_states-ar_states)*(gt_states-ar_states), axis=1))
         return errors
