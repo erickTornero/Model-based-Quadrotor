@@ -5,6 +5,7 @@ import wrapper_quad.vrep as vrep
 from typing import NoReturn
 import time
 from random import gauss
+from collections import OrderedDict
 
 
 class VREPQuadSimple(gym.Env):
@@ -59,20 +60,24 @@ class VREPQuadSimple(gym.Env):
         vrep.simxGetPingTime(self.clientID)
 
         #position, orientation, lin_vel, ang_vel, lin_acel, ang_acel =   self._get_observation_state()
-        position, orientation, lin_vel, ang_vel =   self._get_observation_state()
+        #position, orientation, lin_vel, ang_vel =   self._get_observation_state()
+        rowdata    =   self._get_observation_state()
         #rowdata         =   self._appendtuples_((rotmat, position, angvel, linvel))
         """ Roll & Pitch must be lower than 90º, else apply earlystop """
-        earlystop       =   np.abs(orientation[:-1]) > np.pi/2.0
+        earlystop       =   np.abs(rowdata['orientation'][:-1]) > np.pi/2.0
         """ Use sinYAW & cosYAW as features instead of YAW directly to avoid problem when YAW is near to 180º"""
-        yawangle        =   orientation[-1]
-        orientation[-1] =   np.sin(yawangle)
-        orientation     =   np.concatenate((orientation, np.array([np.cos(yawangle)])))
-
-        rowdata         =   np.concatenate((position, orientation, lin_vel, ang_vel), axis=0)
-        reward          =   position
+        #yawangle        =   orientation[-1]
+        #orientation[-1] =   np.sin(yawangle)
+        #orientation     =   np.concatenate((orientation, np.array([np.cos(yawangle)])))
+#
+        reward          =   rowdata['position']
         distance        =   np.sqrt((reward * reward).sum())
         reward          =   4.0 -1.25 * distance
-        done            =   (distance > 3.2) or (earlystop.sum() > 0.0) 
+        done            =   (distance > 3.2) or (earlystop.sum() > 0.0)
+        
+        #rowdata         =   np.concatenate((position, orientation, lin_vel, ang_vel), axis=0)
+        rowdata         =   self._flat_observation(rowdata)
+         
         #done            =   earlystop.sum() > 0.0
         return (rowdata, reward, done, dict())
     
@@ -101,16 +106,17 @@ class VREPQuadSimple(gym.Env):
         vrep.simxGetPingTime(self.clientID)
         #rdata = self._get_observation_state(False)
         #position, orientation, lin_vel, ang_vel, lin_acel, ang_acel =   self._get_observation_state(compute_acelleration=False)
-        position, orientation, lin_vel, ang_vel =   self._get_observation_state()
+        #position, orientation, lin_vel, ang_vel =   self._get_observation_state()
+        rowdata =   self._get_observation_state()
         #rowdata         =   self._appendtuples_((rotmat, position, angvel, linvel))
         """ Use sinYAW & cosYAW as features instead of YAW directly to avoid problem when YAW is near to 180º"""
-        yawangle        =   orientation[-1]
-        orientation[-1] =   np.sin(yawangle)
-        orientation     =   np.concatenate((orientation, np.array([np.cos(yawangle)])), axis=0)
+        #yawangle        =   orientation[-1]
+        #orientation[-1] =   np.sin(yawangle)
+        #orientation     =   np.concatenate((orientation, np.array([np.cos(yawangle)])), axis=0)
 
         #rowdata         =   np.concatenate((position, orientation, lin_vel, ang_vel, lin_acel, ang_acel), axis=0)
-        rowdata         =   np.concatenate((position, orientation, lin_vel, ang_vel), axis=0)
-        
+        #rowdata         =   np.concatenate((position, orientation, lin_vel, ang_vel), axis=0)
+        rowdata = self._flat_observation(rowdata)
         return rowdata
 
     def render(self, close=False):
@@ -147,8 +153,17 @@ class VREPQuadSimple(gym.Env):
         #else: lin_acel, ang_acel =   np.zeros(3, dtype=np.float32), np.zeros(3, dtype=np.float32) 
 
         position            =   position - self.targetpos
+
+        observation         =   OrderedDict(
+                                    position=position,
+                                    orientation=orientation,
+                                    lin_vel=lin_vel,
+                                    ang_vel=ang_vel
+                                )
+        self.last_observation   =   observation
         #return position, orientation, lin_vel, ang_vel, lin_acel, ang_acel
-        return position, orientation, lin_vel, ang_vel
+        #return position, orientation, lin_vel, ang_vel
+        return observation
 
     def compute_aceleration(self, linv, angv):
         assert linv is not None and angv is not None, "linv or angv must not be a none datatype"
@@ -198,4 +213,29 @@ class VREPQuadSimple(gym.Env):
 
         return sampledpos, sampledangle
 
+    @staticmethod
+    def _flat_observation_st(rowdata):
+        position        =   rowdata['position']
+        orientation     =   rowdata['orientation']
+        lin_vel         =   rowdata['lin_vel']
+        ang_vel         =   rowdata['ang_vel']
 
+        yawangle        =   orientation[-1]
+        orientation[-1] =   np.sin(yawangle)
+        orientation     =   np.concatenate((orientation, np.array([np.cos(yawangle)])), axis=0)
+
+
+        return np.concatenate((position, orientation, lin_vel, ang_vel))
+
+    def _flat_observation(self, rowdata):
+        return VREPQuadSimple._flat_observation_st(rowdata)
+
+    @staticmethod
+    def _get_action_space():
+        action_space       =   spaces.Box(low=0.0,high=100.0,shape=(4,), dtype=np.float32)
+        return action_space
+    
+    @staticmethod
+    def _get_state_space():
+        observation_space  =   spaces.Box(low=-np.inf, high=np.inf, shape=(13,), dtype=np.float32)
+        return observation_space

@@ -80,3 +80,13 @@ class VREPQuadAccelRot(WrapperQuad):
 
     def _flat_observation(self, rowdata):
         return VREPQuadAccelRot._flat_observation_st(rowdata)
+    
+    @staticmethod
+    def _get_action_space():
+        action_space       =   spaces.Box(low=0.0,high=100.0,shape=(4,), dtype=np.float32)
+        return action_space
+    
+    @staticmethod
+    def _get_state_space():
+        observation_space  =   spaces.Box(low=-np.inf, high=np.inf, shape=(24,), dtype=np.float32)
+        return observation_space
