@@ -13,8 +13,14 @@ def plot_error_map(data, traj_len=15, cmap_name='OrRd', _vmin=0.0, _vmax=5.0):
 
 def plot_multiple_error_map(data, traj_len=15, cmap_name='OrRd', _vmin=0.0, _vmax=5.0):
     assert data.ndim == 3
+    #for i in range(data.shape[2]):
+    #    plt.subplot(1, i, data.shape[2])
+    #    p   =   plt.pcolormesh(data[:,:,i], cmap=plt.get_cmap(cmap_name), vmin=_vmin, vmax=_vmax)
+    #    plt.colorbar(p)
+    #plt.show()
+    ndynamics   =   data.shape[2]
+    fig , axs   =   plt.subplots(1, ndynamics)
     for i in range(data.shape[2]):
-        plt.subplot(1, i, data.shape[2])
-        p   =   plt.pcolormesh(data[:,:,i], cmap=plt.get_cmap(cmap_name), vmin=_vmin, vmax=_vmax)
-        plt.colorbar(p)
+        p   =   axs[i].pcolormesh(data[:,:,i], cmap=plt.get_cmap(cmap_name), vmin=_vmin, vmax=_vmax)
+        fig.colorbar(p, ax=axs[i])
     plt.show()

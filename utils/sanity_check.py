@@ -5,7 +5,7 @@ from mbrl.runner import StackStAct
 from mbrl.wrapped_env import QuadrotorEnv, QuadrotorAcelRotmat
 from utils.gen_trajectories import Trajectory
 
-from utils.analize_dynamics import plot_error_map
+from utils.analize_dynamics import plot_error_map, plot_multiple_error_map
 from utils.utility import DecodeEnvironment
 import numpy as np
 import random
@@ -69,9 +69,9 @@ class SanityCheck:
 
         while timestep < min_path_length:
             if trajectory is None:
-                targetposition  =   0.8 * np.ones(3, dtype=np.float32)
+               targetposition  =   0.8 * np.ones(3, dtype=np.float32)
             else:
-                targetposition  =   trajectory[0]
+               targetposition  =   trajectory[0]
 
             next_target_pos =   targetposition
 
@@ -196,7 +196,7 @@ class SanityCheck:
         envsclasses         =   self._get_environments(configfiles)
         obsflat_functions   =   self._get_obsflat_functions(envsclasses)
 
-        set_trace()
+        #set_trace()
         path                =   self.rollouts(obsflat_functions, envsclasses, configfiles)
 
         return path
@@ -214,7 +214,7 @@ class SanityCheck:
         return np.sqrt(np.sum(difference * difference, axis=0))
 
     def process_states(self, samples_names):
-        set_trace()
+        #set_trace()
         paths = self.get_ground_thruth_states(samples_names)
 
         configfiles =   self._get_configfiles(samples_names)
@@ -381,27 +381,32 @@ if __name__ == "__main__":
 
     scheck              =   SanityCheck(config['horizon'],config['candidates'],dynamics,rs,env_, config['t_init'], trajectory, config['n_steps'], config['max_path_length'])
 
+    folders =   ['./data/sample29','./data/sample30','./data/sample27']
+
+    mat_error   =   scheck.process_states(folders)
+
+    plot_multiple_error_map(mat_error)
     #(gt_s, gt_a), (ar_s, ar_a)  =   scheck.get_state_actions()
-    L   =   scheck.get_state_actions()
-    #scheck.analize_errors(gt_s,ar_s)
-    #scheck.analize_pos_error(gt_s,ar_s)
-    
-    error_list  =   []
-    for (gt_s, gt_a), (ar_s, ar_a) in L:
-        errors  =   scheck.get_errors(gt_s, ar_s)
-        error_list.append(errors)
-    errors  =   np.vstack(error_list)
-
-    #errors  =   np.repeat(errors, 15).reshape(15,15)
-    plot_error_map(errors.T, _vmax=10.0)
-
-    (gt_s, gt_a), (ar_s, ar_a) = L[0]
-
-    scheck.analize_errors(gt_s, ar_s)
-
-    (gt_s, gt_a), (ar_s, ar_a) = L[4]
-
-    scheck.analize_errors(gt_s, ar_s)
+    #L   =   scheck.get_state_actions()
+    ##scheck.analize_errors(gt_s,ar_s)
+    ##scheck.analize_pos_error(gt_s,ar_s)
+    #
+    #error_list  =   []
+    #for (gt_s, gt_a), (ar_s, ar_a) in L:
+    #    errors  =   scheck.get_errors(gt_s, ar_s)
+    #    error_list.append(errors)
+    #errors  =   np.vstack(error_list)
+#
+    ##errors  =   np.repeat(errors, 15).reshape(15,15)
+    #plot_error_map(errors.T, _vmax=10.0)
+#
+    #(gt_s, gt_a), (ar_s, ar_a) = L[0]
+#
+    #scheck.analize_errors(gt_s, ar_s)
+#
+    #(gt_s, gt_a), (ar_s, ar_a) = L[4]
+#
+    #scheck.analize_errors(gt_s, ar_s)
     
 
     env_.close()
