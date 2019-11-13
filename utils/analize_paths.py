@@ -3,6 +3,7 @@ import joblib
 import os
 import numpy as np
 import glob
+
 import matplotlib.pyplot as plt
 
 import json
@@ -48,11 +49,13 @@ def plot_trajectory(fold, id_ex, list_paths=None):
     with open(os.path.join(fold, 'rolls'+id_ex+'/experiment_config.json'), 'r') as fp:
         config_experiment   =   json.load(fp)
 
-    index_start_pos =   18*(config_experiment['nstack']-1) + 9# Index where position starts
+    nstack          =   config_experiment['nstack']
+    #index_start_pos =   18*(config_experiment['nstack']-1) + 9# Index where position starts
     for i, i_path  in enumerate(list_paths):
         #plt.subplot(nfigures, 3, i + 1)
-        
+        set_trace()
         data    =   paths[i_path]['observation']
+        index_start_pos =   (data.shape[1]//nstack)*(nstack-1) + 9
         targets =   paths[i_path]['target']
         x_target    =   targets[:, 0]
         y_target    =   targets[:, 1]
@@ -117,12 +120,14 @@ def plot_pos_over_time(fold, id_ex, max_path_length=250, list_paths=None):
     #index_start_pos =   27
     with open(os.path.join(fold, 'rolls'+id_ex+'/experiment_config.json'), 'r') as fp:
         config_experiment   =   json.load(fp)
-        
-    index_start_pos =   18*(config_experiment['nstack']-1) + 9
+    
+    nstack          =   config_experiment['nstack']
+    #index_start_pos =   21*(nstack-1) + 9
 
     plt.figure(figsize=(12, 4))
     for i_path in list_paths:
         data    =   paths[i_path]['observation']
+        index_start_pos =   (data.shape[1]//nstack)*(nstack-1) + 9
         targets =   paths[i_path]['target']
         
         """ Plot distributions of positions in X-Y, X-Z, Y-Z"""
@@ -191,12 +196,14 @@ def plot_ang_velocity(fold, id_ex, list_paths=None):
     plt.figure(figsize=(12,4))
     with open(os.path.join(fold, 'rolls'+id_ex+'/experiment_config.json'), 'r') as fp:
         config_experiment   =   json.load(fp)
-        
-    index_start_pos =   18*(config_experiment['nstack']-1) + 15
+
+    nstack          =   config_experiment['nstack']-1
+    
+    #index_start_pos =   18*(config_experiment['nstack']-1) + 15
 
     for i_path in list_paths:
         data    =   paths[i_path]['observation']
-
+        index_start_pos =   (data.shape[1]//nstack)*(nstack-1) + 15
         """ Plot distributions of positions in X-Y, X-Z, Y-Z"""
         vx_data   =   data[:, index_start_pos]
         vy_data   =   data[:, index_start_pos + 1]
@@ -219,7 +226,7 @@ def plot_ang_velocity(fold, id_ex, list_paths=None):
     
     plt.show()
 
-#plot_ang_velocity('./data/sample8/', '3')
+plot_ang_velocity('./data/sample34/', '5', [0, 1, 2])
 def plot_roll_pitch_angle_otime(fold, id_ex, list_paths=None):
     path_name   =   compute_restore_file(fold, id_ex)
     assert path_name is not None, 'Not file of paths founded'
@@ -291,30 +298,30 @@ def plot_forces(fold, id_ex, list_paths=None):
         forces  =   1.5618e-4*actions*actions + 1.0395e-2*actions + 0.13894
         len_path    =   len(actions)
         plt.subplot(2, 2, 1)
-        len_path = 120
-        plt.plot(np.arange(len_path), forces[:120,0])
+        len_path = 200
+        plt.plot(np.arange(len_path), forces[:len_path,0])
         plt.xticks(np.arange(0, len_path, 10))
         plt.grid()
         plt.ylim(0.0, 3.0)
         plt.title('Motor 1')
 
         plt.subplot(2, 2, 2)
-        plt.plot(np.arange(len_path), forces[:120,1])
+        plt.plot(np.arange(len_path), forces[:len_path,1])
         plt.xticks(np.arange(0, len_path, 10))
         plt.grid()
         plt.ylim(0.0, 3.0)
         plt.title('Motor 2')
         
         plt.subplot(2, 2, 3)
-        plt.plot(np.arange(len_path), forces[:120,2])
-        plt.xticks(np.arange(0, 120, 5))
+        plt.plot(np.arange(len_path), forces[:len_path,2])
+        plt.xticks(np.arange(0, len_path, 10))
         plt.grid()
         plt.ylim(0.0, 3.0)
         plt.title('Motor 3')
 
         plt.subplot(2, 2, 4)
-        plt.plot(np.arange(len_path), forces[:120,3])
-        plt.xticks(np.arange(0, len_path, 5))
+        plt.plot(np.arange(len_path), forces[:len_path,3])
+        plt.xticks(np.arange(0, len_path, 10))
         plt.grid()
         plt.ylim(0.0, 3.0)
         plt.title('Motor 4')
@@ -322,7 +329,7 @@ def plot_forces(fold, id_ex, list_paths=None):
     plt.tight_layout()
     plt.show()
 
-#plot_forces('./data/sample15/','3',list_paths=[1])
+#plot_forces('./data/sample32/','1',list_paths=[0])
 
 
 def plot_3Dtrajectory(fold, id_ex, list_paths=None):
@@ -352,14 +359,15 @@ def plot_3Dtrajectory(fold, id_ex, list_paths=None):
     with open(os.path.join(fold, 'rolls'+id_ex+'/experiment_config.json'), 'r') as fp:
         config_experiment   =   json.load(fp)
 
-    index_start_pos =   18*(config_experiment['nstack']-1) + 9# Index where position starts
-    
+    #index_start_pos =   18*(config_experiment['nstack']-1) + 9# Index where position starts
+    nstack          =   config_experiment['nstack']
     fig     =   plt.figure()
     ax      =   fig.gca(projection='3d') 
     for i, i_path  in enumerate(list_paths):
         #plt.subplot(nfigures, 3, i + 1)
         
         data    =   paths[i_path]['observation']
+        index_start_pos =   (data.shape[1]//nstack)*(nstack-1) + 9
         target  =   paths[i_path]['target']
         """ Plot distributions of positions in X-Y, X-Z, Y-Z"""
         x_data   =   data[:, index_start_pos]     + target[:, 0]
