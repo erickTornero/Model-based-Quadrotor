@@ -12,7 +12,7 @@ class VREPQuadAccelRot(WrapperQuad):
 
         self.action_space       =   spaces.Box(low=0.0,high=100.0,shape=(4,), dtype=np.float32)
         self.observation_space  =   spaces.Box(low=-np.inf, high=np.inf, shape=(24,), dtype=np.float32)
-        _, self.dt              =   vrep.simxGetFloatingParameter(self.clientID, vrep.sim_floatparam_simulation_time_step, vrep.simx_opmode_oneshot_wait)
+        #_, self.dt              =   vrep.simxGetFloatingParameter(self.clientID, vrep.sim_floatparam_simulation_time_step, vrep.simx_opmode_oneshot_wait)
         self.prev_linvel        =   np.zeros(3, dtype=np.float32)
         self.prev_angvel        =   np.zeros(3, dtype=np.float32)
 
@@ -99,7 +99,7 @@ class VREPQuadRotmat(WrapperQuad):
 
         self.action_space       =   spaces.Box(low=0.0,high=100.0,shape=(4,), dtype=np.float32)
         self.observation_space  =   spaces.Box(low=-np.inf, high=np.inf, shape=(18,), dtype=np.float32)
-        _, self.dt              =   vrep.simxGetFloatingParameter(self.clientID, vrep.sim_floatparam_simulation_time_step, vrep.simx_opmode_oneshot_wait)
+        #_, self.dt              =   vrep.simxGetFloatingParameter(self.clientID, vrep.sim_floatparam_simulation_time_step, vrep.simx_opmode_oneshot_wait)
         self.prev_linvel        =   np.zeros(3, dtype=np.float32)
         self.prev_angvel        =   np.zeros(3, dtype=np.float32)
 
@@ -147,13 +147,13 @@ class VREPQuadRotmat(WrapperQuad):
     def _flat_observation(self, rowdata):
         return VREPQuadRotmat._flat_observation_st(rowdata)
 
-    def compute_rewards_distance(self, rowdata):
+    def compute_rewards(self, rowdata):
         #print('computed from child')
         pos_vector  =   rowdata['position']
         magnitud    =   np.sqrt((pos_vector * pos_vector).sum())
         return 4.0 - 1.25 * magnitud
     
-    def compute_rewards(self, rowdata):
+    def compute_rewards_orientation(self, rowdata):
         orientation =   rowdata['orientation']
         roll_sin    =   np.sin(orientation[0])
         pitch_sin   =   np.sin(orientation[1])
@@ -190,7 +190,7 @@ class VREPQuadRotmatAugment(WrapperQuad):
 
         self.action_space       =   spaces.Box(low=0.0,high=100.0,shape=(4,), dtype=np.float32)
         self.observation_space  =   spaces.Box(low=-np.inf, high=np.inf, shape=(21,), dtype=np.float32)
-        _, self.dt              =   vrep.simxGetFloatingParameter(self.clientID, vrep.sim_floatparam_simulation_time_step, vrep.simx_opmode_oneshot_wait)
+        #_, self.dt              =   vrep.simxGetFloatingParameter(self.clientID, vrep.sim_floatparam_simulation_time_step, vrep.simx_opmode_oneshot_wait)
         self.prev_linvel        =   np.zeros(3, dtype=np.float32)
         self.prev_angvel        =   np.zeros(3, dtype=np.float32)
 
@@ -237,13 +237,24 @@ class VREPQuadRotmatAugment(WrapperQuad):
         #return np.concatenate((position, lin_vel, ang_vel, rotation_matrix, lin_acel, ang_acel))
 
     def _flat_observation(self, rowdata):
-        return VREPQuadRotmat._flat_observation_st(rowdata)
+        return VREPQuadRotmatAugment._flat_observation_st(rowdata)
 
     def compute_rewards_distance(self, rowdata):
         #print('computed from child')
         pos_vector  =   rowdata['position']
         magnitud    =   np.sqrt((pos_vector * pos_vector).sum())
         return 4.0 - 1.25 * magnitud
+    
+    def compute_rewards_ang(self, rowdata):
+        orientation =   rowdata['orientation']
+        roll_rad    =   orientation[0]
+        pitch_rad   =   orientation[1]
+        ang_pen     =   roll_rad * roll_rad + pitch_rad * pitch_rad
+
+        reward_angle    =   2.0 - ang_pen
+        reward_distance =   self.compute_rewards_distance(rowdata)
+
+        return reward_distance + reward_angle
     
     def compute_rewards(self, rowdata):
         orientation =   rowdata['orientation']
@@ -254,7 +265,12 @@ class VREPQuadRotmatAugment(WrapperQuad):
         reward_angle    =   2.0 - ang_pen
         reward_distance =   self.compute_rewards_distance(rowdata)
 
-        return reward_distance + reward_angle
+        ang_vel         =   rowdata['ang_vel']
+        yaw_speed       =   ang_vel[2]
+        #reward_yaw_speed    =   2.0 - (yaw_speed * yaw_speed)/(100.0)
+        reward_yaw_speed    =   - (yaw_speed * yaw_speed)/(200.0)
+        
+        return reward_distance + reward_angle + reward_yaw_speed
 
 
     def compute_aceleration(self, linv, angv):

@@ -15,8 +15,8 @@ class QuadrotorEnv(VREPQuadRotmat):
         if self.faultmotor is not None:
             assert fault_rotor < 4, 'Choose a fault rotor in range of [0-3]'
             self.mask[self.faultmotor]  =   0.0
-            print('QuadrotorEnv Initialized with rotor {} faulted, and reward: {}'.format(self.faultmotor, reward_type))
-        else: print('QuadrotorEnv Initialized in fault-free case, and reward: {}'.format(reward_type))
+            print('{} Initialized with rotor {} faulted, and reward: {}'.format(self.__class__.__name__, self.faultmotor, reward_type))
+        else: print('{} Initialized in fault-free case, and reward: {}'.format(self.__class__.__name__, reward_type))
         
         """ Initialize Reward function """
         if reward_type  ==  'type1':
@@ -142,8 +142,8 @@ class QuadrotorEnvAugment(VREPQuadRotmatAugment):
         if self.faultmotor is not None:
             assert fault_rotor < 4, 'Choose a fault rotor in range of [0-3]'
             self.mask[self.faultmotor]  =   0.0
-            print('QuadrotorEnv Initialized with rotor {} faulted, and reward: {}'.format(self.faultmotor, reward_type))
-        else: print('QuadrotorEnv Initialized in fault-free case, and reward: {}'.format(reward_type))
+            print('{} Initialized with rotor {} faulted, and reward: {}'.format(self.__class__.__name__, self.faultmotor, reward_type))
+        else: print('{} Initialized in fault-free case, and reward: {}'.format(self.__class__.__name__, reward_type))
         
         """ Initialize Reward function """
         if reward_type  ==  'type1':
@@ -154,6 +154,8 @@ class QuadrotorEnvAugment(VREPQuadRotmatAugment):
             self.reward =   self.roll_pitch_yaw_vel_penalized
         elif reward_type == 'type4':
             self.reward = self.roll_pitch_angle_penalized
+        elif reward_type == 'type5':
+            self.reward = self.roll_pitch_angle_rotyaw_penalized
         else:
             assert True, 'Error: No valid reward function: example: ("type1")'
     
@@ -233,8 +235,9 @@ class QuadrotorEnvAugment(VREPQuadRotmatAugment):
 
     def roll_pitch_angle_penalized(self, next_obs):
         """
-            Hardcode to use nstack = 4
-            statespaceof 18: (rotmat, pos, lin_vel, ang_vel)
+            reward_type:    'type4'
+            Hardcoded
+            statespaceof 18: (rotmat, pos, lin_vel, ang_vel, orientation)
         """
         #index_SyawCroll     =   3
         index_roll          =   18
@@ -252,6 +255,41 @@ class QuadrotorEnvAugment(VREPQuadRotmatAugment):
 
         return reward_distance + reward_angle
 
+    def roll_pitch_angle_rotyaw_penalized(self, next_obs):
+        """
+            reward_type:    'type5'
+            Hardcoded
+            statespaceof 18: (rotmat, pos, lin_vel, ang_vel, orientation)
+        """
+        #index_SyawCroll     =   3
+        index_roll          =   18
+        index_pitch         =   19
+
+        index_rot_yaw       =   17
+
+        """ Reward angular """
+        roll_rad            =   next_obs[:, index_roll]
+        
+        pitch_rad           =   next_obs[:, index_pitch]
+        #yaw_rad             =   next_obs[:, index_SyawCroll]/(cosroll + 1e-5)
+
+        ang_pen             =   roll_rad*roll_rad + pitch_rad*pitch_rad
+
+        reward_angle        =   2.0 - ang_pen
+        """ 
+            Reward angular rotation Yaw axis 
+            The definition of the scaled reward is based on distribution of angular speed
+            utils/analize_paths/plot_ang_velocity.py
+        """
+        yaw_speed           =   next_obs[:, index_rot_yaw]
+
+        reward_yaw_speed    =   - (yaw_speed * yaw_speed)/(200.0)
+        #reward_yaw_speed    =   2.0 - (yaw_speed * yaw_speed)/100.0
+
+        """ distance reward """
+        reward_distance     =   self.distance_reward_torch(next_obs)
+
+        return reward_distance + reward_angle + reward_yaw_speed
 
     def set_targetpos(self, tpos:np.ndarray):
         assert tpos.shape[0]    ==  3

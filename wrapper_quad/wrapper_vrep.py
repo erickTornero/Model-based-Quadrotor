@@ -44,7 +44,7 @@ class VREPQuad(gym.Env):
         else:
             raise ConnectionError("Can't Connect with the envinronment at IP:{}, Port:{}".format(ip, port))
         
-        pass
+        #pass
 
         if not self._get_boolparam(vrep.sim_boolparam_headless):
             self._clear_gui()
@@ -332,6 +332,8 @@ class VREPQuad(gym.Env):
     def execute(self, action):
         st, rw, done, _ = self.step(action)
         return st, done, rw
+    
+    
 ## Test
 def TestEnv():
     env = VREPQuad(ip='192.168.0.36', port=19999)

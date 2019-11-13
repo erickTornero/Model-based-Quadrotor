@@ -53,7 +53,7 @@ def plot_trajectory(fold, id_ex, list_paths=None):
     #index_start_pos =   18*(config_experiment['nstack']-1) + 9# Index where position starts
     for i, i_path  in enumerate(list_paths):
         #plt.subplot(nfigures, 3, i + 1)
-        set_trace()
+        #set_trace()
         data    =   paths[i_path]['observation']
         index_start_pos =   (data.shape[1]//nstack)*(nstack-1) + 9
         targets =   paths[i_path]['target']
@@ -226,7 +226,7 @@ def plot_ang_velocity(fold, id_ex, list_paths=None):
     
     plt.show()
 
-plot_ang_velocity('./data/sample34/', '5', [0, 1, 2])
+#plot_ang_velocity('./data/sample34/', '5', [0, 1, 2])
 def plot_roll_pitch_angle_otime(fold, id_ex, list_paths=None):
     path_name   =   compute_restore_file(fold, id_ex)
     assert path_name is not None, 'Not file of paths founded'
@@ -236,41 +236,59 @@ def plot_roll_pitch_angle_otime(fold, id_ex, list_paths=None):
     
     with open(os.path.join(fold, 'rolls'+id_ex+'/experiment_config.json'), 'r') as fp:
         config_experiment   =   json.load(fp)
-        
-    index_SyawCroll     =   18*(config_experiment['nstack']-1) + 3
-    index_Sroll         =   18*(config_experiment['nstack']-1) + 6
-    index_SpitchCroll   =   18*(config_experiment['nstack']-1) + 7
+    
+    nstack              =   config_experiment['nstack']
+    
+    #index_SyawCroll     =   18*(config_experiment['nstack']-1) + 3
+    #index_Sroll         =   18*(config_experiment['nstack']-1) + 6
+    #index_SpitchCroll   =   18*(config_experiment['nstack']-1) + 7
 
     for i_path in list_paths:
         data                =   paths[i_path]['observation']
-        roll_rad            =   np.arcsin(-data[:, index_Sroll])
-        cosroll             =   np.cos(roll_rad)
-        pitch_rad           =   data[:, index_SpitchCroll]/cosroll
-        yaw_rad             =   data[:, index_SyawCroll]/cosroll
+        index_orientation   =   (data.shape[1]//nstack) * (nstack - 1) + 18
+        roll_rad            =   data[:, index_orientation]
+        pitch_rad           =   data[:, index_orientation + 1]
+        yaw_rad            =   data[:, index_orientation + 2]
+        #roll_rad            =   np.arcsin(-data[:, index_Sroll])
+        #cosroll             =   np.cos(roll_rad)
+        #pitch_rad           =   data[:, index_SpitchCroll]/cosroll
+        #yaw_rad             =   data[:, index_SyawCroll]/cosroll
 
-        #roll_rad            =   roll_rad * 180.0/np.pi
-        #pitch_rad           =   pitch_rad * 180.0/np.pi
-        #yaw_rad             =   yaw_rad * 180.0/np.pi
+        roll_rad            =   roll_rad * 180.0/np.pi
+        pitch_rad           =   pitch_rad * 180.0/np.pi
+        yaw_rad             =   yaw_rad * 180.0/np.pi
         """
             PLOT pitch POS
         """
         plt.subplot(3, 1, 1)
         plt.plot(np.arange(len(pitch_rad)), pitch_rad, color='red')
-        #plt.ylim(-90.0, 90.0)
+        plt.ylim(-90.0, 90.0)
+        plt.xlim(0.0)
+        #plt.grid(True)
+        plt.grid(which='major', color='#CCCCCC', linestyle='--')
+        plt.grid(which='minor', color='#CCCCCC', linestyle=':')
         #plt.plot(np.arange(len(x_target)), x_target, '-', color='olive',linestyle='dashed')
         """
             PLOT Y POS
         """
         plt.subplot(3, 1, 2)
         plt.plot(np.arange(len(roll_rad)), roll_rad, color='blue')
-        #plt.ylim(-90.0, 90.0)
+        plt.ylim(-90.0, 90.0)
+        plt.xlim(0.0)
+        #plt.grid(True)
+        plt.grid(which='major', color='#CCCCCC', linestyle='--')
+        plt.grid(which='minor', color='#CCCCCC', linestyle=':')
         #plt.plot(np.arange(len(y_target)), y_target, '-', color='olive',linestyle='dashed')
         """
             PLOT Z POS
         """
         plt.subplot(3, 1, 3)
         plt.plot(np.arange(len(yaw_rad)), yaw_rad, color='gray')
-        #plt.ylim(-90.0, 90.0)
+        plt.ylim(-180.0, 180.0)
+        plt.xlim(0.0)
+        plt.grid(which='major', color='#CCCCCC', linestyle='--')
+        plt.grid(which='minor', color='#CCCCCC', linestyle=':')
+        #plt.grid(True)
         #plt.plot(np.arange(len(z_target)), z_target, '-', color='olive',linestyle='dashed')
     plt.show()
 

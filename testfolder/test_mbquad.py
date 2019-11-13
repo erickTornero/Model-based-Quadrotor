@@ -4,6 +4,7 @@ from mbrl.mpc import RandomShooter
 
 from utils.rolls import rollouts
 from utils.gen_trajectories import Trajectory
+from utils.utility import DecodeEnvironment
 import os
 import json
 import glob
@@ -12,13 +13,14 @@ import torch
 
 from IPython.core.debugger import set_trace
 
-id_execution_test   =   '10'
-
-restore_folder  ='./data/sample15/'
+id_execution_test   =   '5'
+#set_trace()
+restore_folder  ='./data/sample36/'
 save_paths_dir  =   os.path.join(restore_folder, 'rolls'+id_execution_test)
 #save_paths_dir  =   None
 with open(os.path.join(restore_folder,'config_train.json'), 'r') as fp:
     config_train    =   json.load(fp)
+    
 
 """
 @Params:
@@ -36,30 +38,33 @@ nstack:             Number of stacked past state-actions, must be the same as in
 """
 
 config      =   {
+    "env_name"          :   config_train['env_name'],
     "horizon"           :   15,
     "candidates"        :   1500,
     "discount"          :   0.99,
     "nstack"            :   config_train['nstack'],
     #"reward_type"       :   config_train['reward_type'],
-    "reward_type"       :   'type1',
+    "reward_type"       :   'type5',
     "max_path_length"   :   1250,
     "nrollouts"         :   20,
-    "trajectory_type"   :   'circle',
+    "trajectory_type"   :   'point',
     "sthocastic"        :   False,
     "hidden_layers"     :   config_train['hidden_layers'],
     "crippled_rotor"    :   config_train['crippled_rotor']
 }
 
-env_        =   QuadrotorEnv(port=28001, reward_type=config['reward_type'], fault_rotor=config['crippled_rotor'])
-state_shape =   env_.observation_space.shape
-action_shape=   env_.action_space.shape
+env_class       =   DecodeEnvironment(config['env_name'])
+env_            =   env_class(port=28001, reward_type=config['reward_type'], fault_rotor=config['crippled_rotor'])
+state_shape     =   env_.observation_space.shape
+action_shape    =   env_.action_space.shape
 
-device      =   torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+config['dt']    =   env_.dt
+device          =   torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 
-dynamics    =   Dynamics(state_shape, action_shape, stack_n=config['nstack'], sthocastic=config['sthocastic'], hlayers=config['hidden_layers'])
-rs          =   RandomShooter(config['horizon'], config['candidates'], env_, dynamics, device, config['discount'])
-checkpoint  =   torch.load(os.path.join(restore_folder, 'params_high.pkl'))
+dynamics        =   Dynamics(state_shape, action_shape, stack_n=config['nstack'], sthocastic=config['sthocastic'], hlayers=config['hidden_layers'])
+rs              =   RandomShooter(config['horizon'], config['candidates'], env_, dynamics, device, config['discount'])
+checkpoint      =   torch.load(os.path.join(restore_folder, 'params_high.pkl'))
 dynamics.load_state_dict(checkpoint['model_state_dict'])
 
 dynamics.mean_input =   checkpoint['mean_input']

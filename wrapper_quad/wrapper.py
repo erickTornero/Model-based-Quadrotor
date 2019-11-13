@@ -34,8 +34,9 @@ class WrapperQuad(gym.Env):
             print('Connection Established Successfully to IP> {} - Port> {} - ID: {}'.format(ip, port, clientID))
             self.clientID       =   clientID
             self.targetpos      =   targetpos
+            _, self.dt              =   vrep.simxGetFloatingParameter(self.clientID, vrep.sim_floatparam_simulation_time_step, vrep.simx_opmode_oneshot_wait)
             #self.prev_pos
-            print('Initialized with tstep>\t{}'.format(vrep.simxGetFloatingParameter(self.clientID, vrep.sim_floatparam_simulation_time_step, vrep.simx_opmode_oneshot_wait)))
+            print('Initialized with tstep>\t{} seconds'.format(self.dt))
         else:
             raise ConnectionError("Can't Connect with the envinronment at IP:{}, Port:{}".format(ip, port))
         

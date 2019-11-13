@@ -36,6 +36,11 @@ class Trajectory:
             y[i_step:]  =   0.0
             z[i_step:]  =   0.0
 
+        elif wave == 'point':
+            """ Fixed point trajectory (0,0,0) """
+            x   =   np.zeros_like(t, dtype=np.float32)
+            y   =   np.zeros_like(t, dtype=np.float32)
+            z   =   np.zeros_like(t, dtype=np.float32)
         else:
             assert False, 'Trajectory not defined'
         
