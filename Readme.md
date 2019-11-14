@@ -9,7 +9,7 @@ Implementation of Quadrotor Model-based Learning in pytorch and VREP Simulator b
 # Current Progress
 We are testing separately Fault-Free Case, and Fault-Motor 1 case for same trajectory.
 
-###### Circle Trajectory
+#### Circle Trajectory
 Here, we show trajectory followed by quadrotor in a *Circle* trajectory
 
 **Fault-Free Case, trajectory over time**
@@ -23,10 +23,10 @@ Here, we show trajectory followed by quadrotor in a *Circle* trajectory
 
 ![3D Trajectories](./showimages/_circle_ffree_vs_f.jpg)
 
-###### Point Trajectory
+#### Point Trajectory
 
 **Fault-Free Case, trajectory over time**
-![Fault-Free Case](./showimages/_point_traj_ffree_s36r5p4_otime.png)
+![Fault-Free Case](./showimages/_point_traj_ffree_s36r5p8_otime.png)
 
 **Fault-M1 Case, trajectory over time** 
 
