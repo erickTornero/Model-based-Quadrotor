@@ -38,10 +38,6 @@ Here, we show trajectory followed by quadrotor in a *Circle* trajectory
 
 #### Gif view
 
-Fault-Free Case, *Point* Trajectory
+In the following *gif* we show both in *Point* Trajectory, Left: **Fault-Free Case**, Right: **Fault-M1 Case** 
 
-![](./showimages/ffree_point_traj.gif)
-
-Fault-M1 Case, *Point* Trajectory
-
-![](./showimages/fault_point_traj.gif)
+![](./showimages/join_ffree_fault.gif)
