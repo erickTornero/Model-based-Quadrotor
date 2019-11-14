@@ -35,3 +35,13 @@ Here, we show trajectory followed by quadrotor in a *Circle* trajectory
 **Same Comparison in 3D dim, Left Fault free, Right Fault Motor 1**
 
 ![3D Trajectories](./showimages/_point_ffree_vs_f.png)
+
+#### Gif view
+
+Fault-Free Case, *Point* Trajectory
+
+![](./showimages/ffree_point_traj.gif)
+
+Fault-M1 Case, *Point* Trajectory
+
+![](./showimages/fault_point_traj.gif)
