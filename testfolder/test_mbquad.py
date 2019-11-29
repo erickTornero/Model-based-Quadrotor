@@ -13,9 +13,9 @@ import torch
 
 from IPython.core.debugger import set_trace
 
-id_execution_test   =   '5'
+id_execution_test   =   '8'
 #set_trace()
-restore_folder  ='./data/sample36/'
+restore_folder  ='./data/sample40/'
 save_paths_dir  =   os.path.join(restore_folder, 'rolls'+id_execution_test)
 #save_paths_dir  =   None
 with open(os.path.join(restore_folder,'config_train.json'), 'r') as fp:
@@ -39,12 +39,12 @@ nstack:             Number of stacked past state-actions, must be the same as in
 
 config      =   {
     "env_name"          :   config_train['env_name'],
-    "horizon"           :   15,
+    "horizon"           :   20,
     "candidates"        :   1500,
     "discount"          :   0.99,
     "nstack"            :   config_train['nstack'],
     #"reward_type"       :   config_train['reward_type'],
-    "reward_type"       :   'type5',
+    "reward_type"       :   config_train['reward_type'],
     "max_path_length"   :   1250,
     "nrollouts"         :   20,
     "trajectory_type"   :   'point',
@@ -77,6 +77,7 @@ dynamics.to(device)
 trajectoryMaganger  =   Trajectory(config['max_path_length'], 2)
 trajectory          =   trajectoryMaganger.gen_points(config['trajectory_type']) if config['trajectory_type'] is not None else None
 
+proportion          =   round(config_train['time_step_size']/config['dt'])
 if save_paths_dir is not None:
     configsfiles    =   glob.glob(os.path.join(save_paths_dir,'*.json'))
     files_paths     =   glob.glob(os.path.join(save_paths_dir,'*.pkl'))
@@ -89,6 +90,6 @@ if save_paths_dir is not None:
     with open(os.path.join(save_paths_dir, 'experiment_config.json'), 'w') as fp:
         json.dump(config, fp, indent=2)
 
-rollouts(dynamics, env_, rs, config['nrollouts'], config['max_path_length'], save_paths_dir, trajectory)
+rollouts(dynamics, env_, rs, config['nrollouts'], config['max_path_length'], save_paths_dir, trajectory, proportion)
 
 env_.close()

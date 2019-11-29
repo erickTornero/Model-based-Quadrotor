@@ -2,13 +2,14 @@ from mbrl.mpc import RandomShooter
 from mbrl.network import Dynamics
 from mbrl.wrapped_env import QuadrotorEnv
 from mbrl.runner import StackStAct
+from collections import deque
 
 import numpy as np
 import joblib
 import os
 import glob
 
-def rollouts(dynamics:Dynamics, env:QuadrotorEnv, mpc:RandomShooter, n_rolls=20, max_path_length=250, save_paths=None, traj=None):
+def rollouts(dynamics:Dynamics, env:QuadrotorEnv, mpc:RandomShooter, n_rolls=20, max_path_length=250, save_paths=None, traj=None, proportion=1):
     """ Generate rollouts for testing & Save paths if it is necessary"""
     nstack  =   dynamics.stack_n
     paths   =   []
@@ -38,6 +39,12 @@ def rollouts(dynamics:Dynamics, env:QuadrotorEnv, mpc:RandomShooter, n_rolls=20,
         timestep    =   0
         cum_reward  =   0.0
 
+        # Test stacked
+        indexes                 =   [idx * proportion for idx in range(nstack)]
+        window_length           =   (nstack - 1)*proportion + 1
+        stack_states_proportion =   deque(maxlen=window_length)
+        stack_actions_proportion    =   deque(maxlen=window_length)
+
 
         running_paths=dict(observations=[], actions=[], rewards=[], dones=[], next_obs=[], target=[])
 
@@ -50,13 +57,20 @@ def rollouts(dynamics:Dynamics, env:QuadrotorEnv, mpc:RandomShooter, n_rolls=20,
 
             env.set_targetpos(next_target_pos)
 
+            if len(stack_states_proportion) >= window_length:
+                actions_    =   [stack_actions_proportion[idx] for idx in indexes]
+                states_    =   [stack_states_proportion[idx] for idx in indexes]
+                stack_as.fill_with_stack(states_, actions_)
             #action = mpc.get_action_PDDM(stack_as, 0.6, 5)
             action = mpc.get_action_torch(stack_as)
                
             next_obs, reward, done, env_info =   env.step(action)
 
-            stack_as.append(acts=action)
+            if len(stack_states_proportion) < window_length:
+                stack_as.append(acts=action)
             
+            # Test stacked
+            stack_actions_proportion.append(action)
 
             #if save_paths is not None:
             observation, action = stack_as.get()
@@ -80,8 +94,11 @@ def rollouts(dynamics:Dynamics, env:QuadrotorEnv, mpc:RandomShooter, n_rolls=20,
             # endif
             
             targetposition  =   next_target_pos
+            if len(stack_states_proportion) < window_length:
+                stack_as.append(obs=next_obs)
+            # Test stacked
+            stack_states_proportion.append(next_obs)
 
-            stack_as.append(obs=next_obs)
             cum_reward  +=  reward
             timestep += 1
 
