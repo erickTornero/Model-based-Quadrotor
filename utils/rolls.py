@@ -9,7 +9,7 @@ import joblib
 import os
 import glob
 
-def rollouts(dynamics:Dynamics, env:QuadrotorEnv, mpc:RandomShooter, n_rolls=20, max_path_length=250, save_paths=None, traj=None, proportion=1):
+def rollouts(dynamics:Dynamics, env:QuadrotorEnv, mpc:RandomShooter, n_rolls=20, max_path_length=250, save_paths=None, traj=None, proportion=1, initial_states=dict(pos=None,ang=None), runn_all_steps=False):
     """ Generate rollouts for testing & Save paths if it is necessary"""
     nstack  =   dynamics.stack_n
     paths   =   []
@@ -21,7 +21,9 @@ def rollouts(dynamics:Dynamics, env:QuadrotorEnv, mpc:RandomShooter, n_rolls=20,
         texto   =   'Prepare for save paths in "{}"\n'.format(save_paths)
 
         print('Prepare for save paths in "{}"'.format(save_paths))
-        
+    
+    print('Initial states is Fixed!' if initial_states['pos']is not None else 'Initial states is selected Randomly')
+    print('Allowed to execute all t-steps' if runn_all_steps else 'Early stop activated')
     #env.set_targetpos(np.random.uniform(-1.0, 1.0, size=(3,)))
     for i_roll in range(1, n_rolls+1):
         #targetposition  =   np.random.uniform(-1.0, 1.0, size=(3))
@@ -33,7 +35,11 @@ def rollouts(dynamics:Dynamics, env:QuadrotorEnv, mpc:RandomShooter, n_rolls=20,
         next_target_pos =   targetposition
 
         env.set_targetpos(targetposition)
-        obs = env.reset()
+        init_pos    =   initial_states['pos']
+        init_ang    =   initial_states['ang']
+        obs = env.reset(init_pos, init_ang)
+        
+
         stack_as = StackStAct(env.action_space.shape, env.observation_space.shape, n=nstack, init_st=obs)
         done = False
         timestep    =   0
@@ -65,6 +71,8 @@ def rollouts(dynamics:Dynamics, env:QuadrotorEnv, mpc:RandomShooter, n_rolls=20,
             action = mpc.get_action_torch(stack_as)
                
             next_obs, reward, done, env_info =   env.step(action)
+
+            if runn_all_steps: done=False
 
             if len(stack_states_proportion) < window_length:
                 stack_as.append(acts=action)

@@ -92,7 +92,7 @@ class WrapperQuad(gym.Env):
 
         # Compute The reward function
 
-    def reset(self):
+    def reset(self, init_pos=None, init_ang=None):
         #print('Reset -ing id> ', self.clientID)
         # Put code when reset here
         #r = vrep.simxSetObjectPosition(self.clientID, self.quad_handler, -1, np.array([0.0,0.0,0.5]), vrep.simx_opmode_oneshot_wait)
@@ -117,7 +117,7 @@ class WrapperQuad(gym.Env):
         #init_position, init_ang     =   self._get_random_pos_ang(max_radius=3.1, max_angle=np.pi, respecto=self.targetpos)
         #vrep.simxSetObjectPosition(self.clientID, self.quad_handler, -1, init_position, vrep.simx_opmode_blocking)
         #vrep.simxSetObjectOrientation(self.clientID, self.quad_handler, -1, init_ang, vrep.simx_opmode_blocking)
-        self.set_states()
+        self.set_states(init_pos, init_ang)
         ## Set target
         vrep.simxSetObjectPosition(self.clientID, self.target_handler, -1, self.targetpos, vrep.simx_opmode_oneshot)
 
@@ -214,10 +214,10 @@ class WrapperQuad(gym.Env):
         """
             Stablish the position, and angular condition
         """
-        if pos == None or ang == None:
+        if pos is None or ang is None:
             init_position, init_ang     =   self._get_random_pos_ang(max_radius=3.1, max_angle=np.pi, respecto=self.targetpos)
-            if pos == None: pos=init_position
-            if ang == None: ang=init_ang
+            if pos is None: pos=init_position
+            if ang is None: ang=init_ang
         vrep.simxSetObjectPosition(self.clientID, self.quad_handler, -1, pos, vrep.simx_opmode_blocking)
         vrep.simxSetObjectOrientation(self.clientID, self.quad_handler, -1, ang, vrep.simx_opmode_blocking)
 

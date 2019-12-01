@@ -10,12 +10,13 @@ import json
 import glob
 
 import torch
+import numpy as np
 
 from IPython.core.debugger import set_trace
 
-id_execution_test   =   '8'
+id_execution_test   =   '10'
 #set_trace()
-restore_folder  ='./data/sample40/'
+restore_folder  ='./data/sample42/'
 save_paths_dir  =   os.path.join(restore_folder, 'rolls'+id_execution_test)
 #save_paths_dir  =   None
 with open(os.path.join(restore_folder,'config_train.json'), 'r') as fp:
@@ -45,12 +46,15 @@ config      =   {
     "nstack"            :   config_train['nstack'],
     #"reward_type"       :   config_train['reward_type'],
     "reward_type"       :   config_train['reward_type'],
-    "max_path_length"   :   1250,
+    "max_path_length"   :   250,
     "nrollouts"         :   20,
-    "trajectory_type"   :   'point',
+    "trajectory_type"   :   'circle',
     "sthocastic"        :   False,
     "hidden_layers"     :   config_train['hidden_layers'],
-    "crippled_rotor"    :   config_train['crippled_rotor']
+    "crippled_rotor"    :   config_train['crippled_rotor'],
+    "init_pos"          :   [1.524363399, -8.88426602e-01,  1.18526769],
+    "init_ang"          :   [2.90758014e-01, 1.40766516e-01, 2.39154622e-01],
+    "run_all_tsteps"    :   True
 }
 
 env_class       =   DecodeEnvironment(config['env_name'])
@@ -78,6 +82,12 @@ trajectoryMaganger  =   Trajectory(config['max_path_length'], 2)
 trajectory          =   trajectoryMaganger.gen_points(config['trajectory_type']) if config['trajectory_type'] is not None else None
 
 proportion          =   round(config_train['time_step_size']/config['dt'])
+""" Give initial state """
+init_pos    =   np.array(config['init_pos']) 
+init_ang    =   np.array(config['init_ang'])
+initial_state  =   dict(pos=init_pos, ang=init_ang)
+# Allow to run all time steps
+run_all_tsteps  =   config['run_all_tsteps']
 if save_paths_dir is not None:
     configsfiles    =   glob.glob(os.path.join(save_paths_dir,'*.json'))
     files_paths     =   glob.glob(os.path.join(save_paths_dir,'*.pkl'))
@@ -89,7 +99,8 @@ if save_paths_dir is not None:
     
     with open(os.path.join(save_paths_dir, 'experiment_config.json'), 'w') as fp:
         json.dump(config, fp, indent=2)
-
-rollouts(dynamics, env_, rs, config['nrollouts'], config['max_path_length'], save_paths_dir, trajectory, proportion)
+#set_trace()
+print('Rolls in trajectory type: {}, max_path_length: {}'.format(config['trajectory_type'], config['max_path_length']))
+rollouts(dynamics, env_, rs, config['nrollouts'], config['max_path_length'], save_paths_dir, trajectory, proportion, initial_state, run_all_tsteps)
 
 env_.close()
