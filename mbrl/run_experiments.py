@@ -1,7 +1,7 @@
 from mbrl.network import Dynamics
 from mbrl.parallel_env import ParallelVrepEnv
 from mbrl.runner import Runner
-from mbrl.wrapped_env import QuadrotorEnv, QuadrotorAcelEnv
+from mbrl.wrapped_env import QuadrotorEnv, QuadrotorAcelEnv, QuadrotorSimpleEnv, QuadrotorAcelRotmat
 from mbrl.mpc import RandomShooter
 from mbrl.train_mb import Trainer
 
@@ -34,13 +34,13 @@ from tensorboardX import SummaryWriter
 
     reward_type:            Chose following values: 'type{1:3}'
                             type1: Distance reward
-                            type2: Penalized roll & pitch velocities
+                            type2: Penalized reward_yaw_speed    =   - (yaw_speed * yaw_speed)/(200.0)roll & pitch velocities
                             type3: Penalized roll & pitch & yaw velocities
 """
 
 config  =   {
     # General parameters #
-    "id_executor"           :   'sample24',
+    "id_executor"           :   'sample50',
     "n_iterations"          :   256,
 
     # MPC Controller - Random Shooting #
@@ -51,10 +51,10 @@ config  =   {
 
     # Environment Setting & runner #
     
-    "env_name"              :   'QuadrotorAcelEnv',
+    "env_name"              :   'QuadrotorEnvAugment',
     "max_path_length"       :   250,
     "total_tsteps_per_run"  :   10000,
-    "reward_type"           :   'type1',
+    "reward_type"           :   'type5',
     "crippled_rotor"        :   None,
     "time_step_size"        :   0.050,  #seconds
     # Training Parameters #
@@ -68,7 +68,7 @@ config  =   {
     "sthocastic"            :   False,
     "hidden_layers"         :   (250,250,250),
     "activation_function"   :   'tanh',
-    "nstack"                :   2
+    "nstack"                :   1
 }
 """*****************************************
     Hyper-Parameters Settings
@@ -123,6 +123,9 @@ os.makedirs(images_path)
 
 writer = SummaryWriter('./runs/'+config['id_executor'])
 mean_reward_maximum =   0.0
+
+print(dyn)
+
 for n_it in range(1, config['n_iterations']+1):
     print('============================================')
     print('\t\t Iteration {} \t\t\t'.format(n_it))
@@ -148,7 +151,7 @@ for n_it in range(1, config['n_iterations']+1):
             'epsilon': dyn.epsilon
             }, os.path.join(save_path, 'params_high.pkl'))
         #torch.save(dyn.state_dict(), os.path.join(save_path, 'params_high.pkl'))
-
+    #set_trace()
     tr_loss, vl_loss = trainer.fit(data_x, delta_obs)
     print('-------------Info {}-------------'.format(n_it))
     rolls_info      =   vecenv.get_reset_nrollouts()
