@@ -3,7 +3,7 @@ import joblib
 import os
 import numpy as np
 import glob
-
+from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 
 import json
@@ -575,7 +575,7 @@ def plot_forces(fold, id_ex, list_paths=None):
 #plot_forces('./data/sample15/', '2', [3])
 
 
-def plot_3Dtrajectory(fold, id_ex, list_paths=None):
+def plot_3Dtrajectory(fold, id_ex, cols, figure=None, axes=None, list_paths=None):
     """ 
         Plot specific trajectories given in list_paths else
         plots all the trajectories
@@ -586,7 +586,6 @@ def plot_3Dtrajectory(fold, id_ex, list_paths=None):
         (3,1,2): X-Z
         (3,1,3): Y-Z
     """
-    from mpl_toolkits.mplot3d import Axes3D
     path_name   =   compute_restore_file(fold, id_ex)
     assert path_name is not None, 'Not file of paths founded'
     
@@ -604,8 +603,8 @@ def plot_3Dtrajectory(fold, id_ex, list_paths=None):
 
     #index_start_pos =   18*(config_experiment['nstack']-1) + 9# Index where position starts
     nstack          =   config_experiment['nstack']
-    fig     =   plt.figure()
-    ax      =   fig.gca(projection='3d') 
+    fig =   plt.figure() if figure is None else figure
+    ax  =   fig.gca(projection='3d') if axes is None else axes
     #set_trace()
     for i, i_path  in enumerate(list_paths):
         #plt.subplot(nfigures, 3, i + 1)
@@ -617,24 +616,76 @@ def plot_3Dtrajectory(fold, id_ex, list_paths=None):
         x_data   =   data[:, index_start_pos]     + target[:, 0]
         y_data   =   data[:, index_start_pos + 1] + target[:, 1]
         z_data   =   data[:, index_start_pos + 2] + target[:, 2]
-
+        startpos    =   np.array([x_data[0], y_data[0], z_data[0]], dtype=np.float32)
         """ Initialize subplot 1 x 3 """
         #plt.figure(figsize=(12, 4))
-            
-        ax.plot(x_data, y_data, z_data)
-        ax.plot(target[:,0],target[:,1],target[:,2])
-        ax.set_zlim(-1.5, 1.5)
+        #set_trace()
+        ax.plot([startpos[0]], [startpos[1]], [startpos[2]], markerfacecolor='k', markeredgecolor='k', marker='o', markersize=5, alpha=0.6)
+        ax.text(startpos[0], startpos[1], startpos[2], 'Start-Point', color='k')
         
+        ax.plot(x_data, y_data, z_data, color=cols[0], linewidth=3)
+        ax.plot(target[:,0],target[:,1],target[:,2], cols[1], linestyle='dashed')
+    
+    return fig, ax
 
-    plt.show()
+def plot_comparison_3Dtrajectory(data_config, colors, legend):
+    fig, ax =   None, None
+    set_trace()
+    for _data, col in zip(data_config, colors[:-1]):
+        fig, ax =   plot_3Dtrajectory(_data['fold'], _data['id_ex'], [col, colors[-1]],fig, ax, _data['list_paths'])
+    ax.set_xlim(-2.0, 2.0)
+    ax.set_ylim(-2.0, 2.0)
+    ax.set_zlim(-1.5, 1.5)
+    fig.show()
 
+def make3danimation(input_data, colors, skipsteps=1):
+    positions   =   []
+    for _data in input_data:
+        pos   =   get_positions_otime(_data['fold'], _data['id_ex'], None, _data['list_paths'])
+        positions.append(pos)
+    fig =   plt.figure()
+    ax  =   fig.gca(projection='3d')
+    ax.set_xlim(-1.0, 1.5)
+    ax.set_ylim(-1.0, 1.0)
+    ax.set_zlim(-1.5, 1.5)
+    ax.view_init(elev=10., azim=40)
+    #if legend is not None: ax.legend(legend)
+    #set_trace()
+    x_target    =   positions[0][0]['x_target']
+    y_target    =   positions[0][0]['y_target']
+    z_target    =   positions[0][0]['z_target']
+    ax.plot(x_target,y_target,z_target, colors[-1], linestyle='dashed')
+    startpos  =   np.array([positions[0][0]['x'][0], positions[0][0]['y'][0], positions[0][0]['z'][0]], dtype=np.float32)
+    ax.plot([startpos[0]], [startpos[1]], [startpos[2]], markerfacecolor='k', markeredgecolor='k', marker='o', markersize=5, alpha=0.6)
+    ax.text(startpos[0], startpos[1], startpos[2], 'Start-Point', color='k')    
+    #data_pos['t']   =   np.arange(len(x_data))*dt
+    #data_pos['x']   =   x_data
+    #data_pos['y']   =   y_data
+    #data_pos['z']   =   z_data
+    #data_pos['x_target']   =   x_target
+    #data_pos['y_target']   =   y_target
+    #data_pos['z_target']   =   z_target
+    length  =   len(positions[0][0]['t'])
+    all_data    =   [[[], [], []] for _ in range(len(positions))]
+    for ts in range(0, length, skipsteps):
+        poss    =   [[_p[0]['x'][ts], _p[0]['y'][ts],_p[0]['z'][ts]] for _p in positions]
+        ax.view_init(elev=30.+ts*0.01, azim=40.0+ts*0.05)
+        for _data3d, colp, cumm_data in zip(poss, colors[:-1], all_data):
+            cumm_data[0].append(_data3d[0])
+            cumm_data[1].append(_data3d[1])
+            cumm_data[2].append(_data3d[2])
+            ax.plot(cumm_data[0],cumm_data[1],cumm_data[2], color=colp, linewidth=2.5)
+        fig.savefig('./animations/100_'+str(1000+ts//10))
+        
+        
 #plot_3Dtrajectory('./data/sample16/','11', list_paths=[19])
 
 def plot_trajectory_comparison(input_data, colors, title=None, legend=['fault-free', 'fault-rotor', 'Ground-Truth']):
     def callback(_pos):
         return _pos['t'].shape[0]
-    fig, axs = plt.subplots(1, 3, figsize=(12, 4), sharey=True)
-    
+    fig, axs = plt.subplots(2,2, figsize=(12, 8), sharey=True)
+    axs     =   axs.flatten()
+    #set_trace()
     xlim_max    =   0.0
     xlim_min    =   np.inf
     #_target     =   []
@@ -654,17 +705,21 @@ def plot_trajectory_comparison(input_data, colors, title=None, legend=['fault-fr
             pos_x.append(_pos['x'][:max_path_length])
             pos_y.append(_pos['y'][:max_path_length])
             pos_z.append(_pos['z'][:max_path_length])
-        axs[0] = drawStdPlot(pos_x, None,None,'Position (m)', color=col, axes=axs[0],  scalefactor=dt)
-        axs[1] = drawStdPlot(pos_y, title,'time (s)',None, color=col, axes=axs[1],  scalefactor=dt)
-        axs[2] = drawStdPlot(pos_z, None,'x',None, color=col, axes=axs[2],  scalefactor=dt)
+        axs[0] = drawStdPlot(pos_x, None,None,'X-axis', color=col, axes=axs[0],  scalefactor=dt)
+        axs[1] = drawStdPlot(pos_y, title,'time (s)','Y-axis', color=col, axes=axs[1],  scalefactor=dt)
+        axs[2] = drawStdPlot(pos_z, None,None,'Z-axis', color=col, axes=axs[2],  scalefactor=dt)
+        #axs[1,1] = drawStdPlot(pos_z, None,None,'Z-axis', color=col, axes=axs[1,1],  scalefactor=dt)
     plt.ylim(-2.0, 2.0)
     for idx, _targ in zip(count(), _target):
-        axs[idx].plot(np.arange(len(_targ))*dt, _targ, color='black')
+        axs[idx].plot(np.arange(len(_targ))*dt, _targ, color=colors[-1], linestyle='dashed')
         axs[idx].set_xlim(xlim_min, xlim_max)
         axs[idx].grid(which='major', color='#CCCCCC', linestyle='--')
         axs[idx].grid(which='minor', color='#CCCCCC', linestyle=':')
+    axs[-1].axis('off')
+    #axs[-1].legend(legend)  
     plt.tight_layout()
-    plt.legend(legend)
+    fig.legend(legend, loc='center', bbox_to_anchor=(0.75, 0.25), fontsize=25)
+    plt.subplots_adjust(wspace=0.1)
     plt.show()
     
     
@@ -674,8 +729,8 @@ def plot_trajectory_comparison(input_data, colors, title=None, legend=['fault-fr
 dict1 = dict(
             fold  =   './data/sample42',
             max_path_length = 20,
-            id_ex       =   '9',
-            list_paths  =   [0, 1, 2, 3, 4]
+            id_ex       =   '11',
+            list_paths  =   [0]
         )
 dict2 = dict(
             fold  =   './data/sample40',
@@ -683,10 +738,14 @@ dict2 = dict(
             #id_ex       =   '10',
             #list_paths  =   [12]
             id_ex       =   '15',
-            list_paths  =   [0,1, 2, 3, 4]
+            list_paths  =   [0]
         )
+#plot_comparison_3Dtrajectory([dict1,dict2], ['b','y','orange'],None)
+#make3danimation([dict1, dict2], ['b','y','orange'], 10)
 legend=['fault-free', 'fault-rotor', 'Ground-Truth']
-#plot_trajectory_comparison([dict1, dict2], ['b','r','g'],'Comparison over time in Circle-Trajectory', legend)
+#title='Position (m) over time in a Circular path. Fault-free vs fault-case'
+title=None
+#plot_trajectory_comparison([dict1, dict2], ['b','r','g'], title,legend)
 
 dict3 = dict(
             fold  =   './data/sample42',
@@ -694,14 +753,91 @@ dict3 = dict(
             #id_ex       =   '10',
             #list_paths  =   [12]
             id_ex       =   '10',
-            list_paths  =   [0,1, 2, 3, 4, 6, 7,8]
+            list_paths  =   None
         )
 
 dict4 = dict(
             fold  =   './data/sample42',
             max_path_length = 20,
-            id_ex       =   '9',
-            list_paths  =   [0, 1, 2, 3, 4]
+            id_ex       =   '11',
+            list_paths  =   None
         )
 legend  =   ['10ms', '50ms','Ground-Truth']
-plot_trajectory_comparison([dict4, dict3], ['b','r','g'], 'Reduction of dt', legend)
+title=None
+#plot_trajectory_comparison([dict4, dict3], ['b','r','g'], title, legend)
+
+dict5 = dict(
+            fold  =   './data/sample40',
+            max_path_length = 20,
+            id_ex       =   '17',
+            list_paths  =   None
+        )
+dict6 = dict(
+            fold  =   './data/sample40',
+            max_path_length = 20,
+            #id_ex       =   '10',
+            #list_paths  =   [12]
+            id_ex       =   '16',
+            list_paths  =   None
+        )
+legend=['fault-free', 'fault-rotor', 'Ground-Truth']
+#title='Position (m) over time in a Fixed Point path. Fault-free vs fault-case'
+title=None
+#plot_trajectory_comparison([dict5, dict6], ['b','r','g'], title,legend)
+
+""" Hover at fixed point"""
+dict7 = dict(
+            fold  =   './data/sample42',
+            max_path_length = 20,
+            id_ex       =   '12',
+            list_paths  =   None
+        )
+dict8 = dict(
+            fold  =   './data/sample40',
+            max_path_length = 20,
+            #id_ex       =   '10',
+            #list_paths  =   [12]
+            id_ex       =   '16',
+            list_paths  =   None
+        )
+legend=['fault-free', 'fault-rotor', 'Ground-Truth']
+#make3danimation([dict7, dict8], ['b','y','orange'], 10)
+#title='Position (m) over time in a Circular path. Fault-free vs fault-case'
+title=None
+#plot_trajectory_comparison([dict7, dict8], ['b','r','g'], title,legend)
+
+""" Helicoid Trjaectory"""
+dict9 = dict(
+            fold  =   './data/sample42',
+            max_path_length = 20,
+            id_ex       =   '13',
+            list_paths  =   [0]
+        )
+dict10 = dict(
+            fold  =   './data/sample40',
+            max_path_length = 20,
+            #id_ex       =   '10',
+            #list_paths  =   [12]
+            id_ex       =   '18',
+            list_paths  =   [2]
+        )
+    
+#make3danimation([dict9, dict10], ['b','y','orange'], 10)
+
+""" Sin-Vertical Trjaectory"""
+dict9 = dict(
+            fold  =   './data/sample42',
+            max_path_length = 20,
+            id_ex       =   '14',
+            list_paths  =   [0]
+        )
+dict10 = dict(
+            fold  =   './data/sample40',
+            max_path_length = 20,
+            #id_ex       =   '10',
+            #list_paths  =   [12]
+            id_ex       =   '19',
+            list_paths  =   [6]
+        )
+    
+make3danimation([dict9, dict10], ['b','y','orange'], 10)

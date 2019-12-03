@@ -29,8 +29,8 @@ def drawStdPlot( batchResults, title, xlabel, ylabel, startStep = 1, color = 'r'
     _std = batchResults.std( axis = 0 )
 
     # do the plotting
-    axes.plot( _xx, _mean, color = color, linestyle = '-' )
-    axes.fill_between( _xx, _mean - 2. * _std, _mean + 2. * _std, color = color, alpha = 0.5 )
+    axes.plot( _xx, _mean, color = color, linestyle = '-')
+    axes.fill_between( _xx, _mean - 2. * _std, _mean + 2. * _std, color = color, alpha = 0.2 )
 
     axes.set_xlabel( xlabel )
     axes.set_ylabel( ylabel )
