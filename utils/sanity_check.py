@@ -76,7 +76,7 @@ class SanityCheck:
             next_target_pos =   targetposition
 
             self.env.set_targetpos(targetposition)
-            obs = self.env.reset()
+            obs = self.env.reset(np.array([0., 0., 0.]), np.array([0., 0., 0.]))
             obses           =   self.env.last_observation
             obses           =   [flat_fn(obses) for flat_fn in flat_functions]
 
@@ -176,7 +176,7 @@ class SanityCheck:
         sthocastics     =   [configfile['sthocastic'] for configfile in configfiles]
         hidden_layers   =   [configfile['hidden_layers'] for configfile in configfiles]
         dynamics_list   =   [Dynamics(state_space.shape, action_space.shape, nstack, sthocastic, hlayers=hlayers) for state_space, action_space, nstack, sthocastic, hlayers in zip(observ_spaces, action_spaces, nstacks, sthocastics, hidden_layers)]
-        
+        #set_trace()
         """ Loading Dynamics """
         checkpoints     =   [torch.load(os.path.join(sample_name, 'params_high.pkl')) for sample_name in samples_names]
         
@@ -202,14 +202,21 @@ class SanityCheck:
         return path
 
     def normalize_input(self, dynamics, obs):
+        return SanityCheck.normalize_input_st(dynamics, obs)
+
+    @staticmethod
+    def normalize_input_st(dynamics, obs):
         assert dynamics.mean_input is not None
         return (obs - dynamics.mean_input)/(dynamics.std_input + dynamics.epsilon)
-    
     """ 
         Compute quadratic error 
         ::Assume numpy inputs
     """
     def compute_quadratic_error(self, state1, state2):
+        return SanityCheck.compute_quadratic_error_st(state1, state2)
+        
+    @staticmethod
+    def compute_quadratic_error_st(state1, state2):
         difference  =   state1- state2
         return np.sqrt(np.sum(difference * difference, axis=0))
 
@@ -222,6 +229,7 @@ class SanityCheck:
         action_spaces   =   [envclass._get_action_space() for envclass in envsclasses]
         state_spaces    =   [envclass._get_state_space() for envclass in envsclasses]
         path_length         =   len(paths[0]['observations'])
+        set_trace()
         assert path_length > self.t_init + self.horizon + self.n_steps - 1, 'Too short path, try again!'
         
         device              =   torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
@@ -269,10 +277,49 @@ class SanityCheck:
         print('Deal with normalized observation')
         #return normalized_observations
         return error_matrixes
+    
+    @staticmethod
+    def get_errors_matrixes_from_path(path, action_sz, state_sz, horizon, nstack, dynamics, device, nskip=1):
+        """ Get matrix of error from run path"""
+        length_path         =   path['actions'].shape[0]
+        states              =   [path['observation'][idx:idx+horizon] for idx in range(length_path-horizon)]
+        actions             =   [path['actions'][idx:idx+horizon] for idx in range(length_path-horizon)]
+
+        set_trace()
+        """ Concat corresponding state & actions """
+        #observations_paths  =   [[np.concatenate((state_unit, action_unit)) for state_unit, action_unit in zip(state_path, action_path)] for state_path, action_path in zip(states, actions)]
+
+        #normalized_observations =   [[self.normalize_input(dynamics, obs) for obs in obs_path] for obs_path, dynamics in zip(observations_paths, dynamics_list)]
+
+        error_matrixes          =   np.zeros((horizon, length_path), dtype=np.float32)
+        
+        nstack  =   dynamics.stack_n
+        for _step, _sts, _acts in zip(count(), states, actions):
+            init_stackobs    =  _sts[0].reshape(nstack, -1)
+            init_stackacts   =  _acts[0].reshape(nstack, -1)
+            stack_as = StackStAct((action_sz,), (state_sz,), n=nstack)
+            stack_as.fill_with_stack(init_stackobs, init_stackacts)
+            for _h in range(1, horizon):
+                obs_, acts_             =   stack_as.get()
+                obs_flat                =   np.concatenate((obs_.flatten(), acts_.flatten()), axis=0)
+                obs_flat                =   SanityCheck.normalize_input_st(dynamics, obs_flat)
+                obs_tensor              =   torch.tensor(obs_flat, dtype=torch.float32, device=device)
+                obs_tensor.unsqueeze_(0)
+                next_obs                =   dynamics.predict_next_obs(obs_tensor, device).to('cpu')
+                next_obs                =   np.asarray(next_obs.squeeze(0))
+                next_action             =   _acts[_h][-action_sz:]
+                stack_as.append(next_obs, next_action)
+
+                gt_obs                  =   _sts[_h][-state_sz:]
+                error_                  =   SanityCheck.compute_quadratic_error_st(gt_obs, next_obs)
+                error_matrixes[_h, _step] =   error_
+
+        return error_matrixes
+    
 
     def get_state_actions(self):
         """ Generate one rollout """
-        #set_trace()
+        set_trace()
         path    =   rollouts(self.dynamics, self.env, self.mpc, 1, self.max_path_length, None, self.trajectory)
         #gt_states   =   path[0]['observation'][self.t_init:, 18*(self.nstack-1):]
         assert len(path[0]['observations']) > self.t_init + self.horizon + self.n_steps - 1, 'Too short path, try again!'
@@ -334,7 +381,7 @@ if __name__ == "__main__":
     import os
     import json
 
-    restore_folder  ='./data/sample28/'
+    restore_folder  ='./data/sample40/'
     #save_paths_dir  =   os.path.join(restore_folder, 'rolls'+id_execution_test)
     #save_paths_dir  =   None
     with open(os.path.join(restore_folder,'config_train.json'), 'r') as fp:
@@ -342,17 +389,17 @@ if __name__ == "__main__":
 
     config      =   {
         "env_name"          :   config_train['env_name'],
-        "horizon"           :   15,
+        "horizon"           :   20,
         "candidates"        :   1500,
         "discount"          :   0.99,
-        "t_init"            :   30,
+        "t_init"            :   15,
         "nstack"            :   config_train['nstack'],
         #"reward_type"       :   config_train['reward_type'],
-        "reward_type"       :   'type1',
+        "reward_type"       :   'type5',
         "max_path_length"   :   250,
         "nrollouts"         :   20,
-        "n_steps"           :   20,
-        "trajectory_type"   :   'stepped',
+        "n_steps"           :   40,
+        "trajectory_type"   :   'point',
         "sthocastic"        :   False,
         "hidden_layers"     :   config_train['hidden_layers'],
         "crippled_rotor"    :   config_train['crippled_rotor']
@@ -381,11 +428,11 @@ if __name__ == "__main__":
 
     scheck              =   SanityCheck(config['horizon'],config['candidates'],dynamics,rs,env_, config['t_init'], trajectory, config['n_steps'], config['max_path_length'])
 
-    folders =   ['./data/sample29','./data/sample30','./data/sample27']
+    folders =   ['./data/sample40','./data/sample32']#, './data/sample27', './data/sample29', './data/sample30','./data/sample31']
 
     mat_error   =   scheck.process_states(folders)
 
-    plot_multiple_error_map(mat_error)
+    plot_multiple_error_map(mat_error, config['n_steps'], _vmax=10.0)
     #(gt_s, gt_a), (ar_s, ar_a)  =   scheck.get_state_actions()
     #L   =   scheck.get_state_actions()
     ##scheck.analize_errors(gt_s,ar_s)

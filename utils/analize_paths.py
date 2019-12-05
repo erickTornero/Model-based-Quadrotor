@@ -669,7 +669,7 @@ def make3danimation(input_data, colors, skipsteps=1):
     all_data    =   [[[], [], []] for _ in range(len(positions))]
     for ts in range(0, length, skipsteps):
         poss    =   [[_p[0]['x'][ts], _p[0]['y'][ts],_p[0]['z'][ts]] for _p in positions]
-        ax.view_init(elev=30.+ts*0.01, azim=40.0+ts*0.05)
+        ax.view_init(elev=30.+ts*0.01, azim=65.0+ts*0.01)
         for _data3d, colp, cumm_data in zip(poss, colors[:-1], all_data):
             cumm_data[0].append(_data3d[0])
             cumm_data[1].append(_data3d[1])
@@ -837,7 +837,64 @@ dict10 = dict(
             #id_ex       =   '10',
             #list_paths  =   [12]
             id_ex       =   '19',
-            list_paths  =   [6]
+            list_paths  =   [8]
         )
     
-make3danimation([dict9, dict10], ['b','y','orange'], 10)
+#make3danimation([dict9, dict10], ['b','y','orange'], 10)
+
+def sanity_check_path(fold, id_ex, ipath):
+    set_trace()
+    from mbrl.network import Dynamics
+    from utils.sanity_check import SanityCheck
+    import torch
+    from utils.analize_dynamics import plot_error_map
+    device      =   torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    path_name   =   compute_restore_file(fold, id_ex)
+    
+    assert path_name is not None, 'Not file of paths founded'
+
+    paths           =   joblib.load(path_name)
+
+    #index_start_pos =   63
+    #index_start_pos =   27
+    with open(os.path.join(fold, 'rolls'+id_ex+'/experiment_config.json'), 'r') as fp:
+        config_experiment   =   json.load(fp)
+    
+    nstack          =   config_experiment['nstack']
+    dt              =   config_experiment['dt']
+    horizon         =   config_experiment['horizon']
+    #index_start_pos =   21*(nstack-1) + 9
+    max_path_length =   config_experiment['max_path_length']
+
+    env_class       =   config_experiment['env_name']
+    
+    path    =   paths[ipath]
+
+    state_sz     =   path['observation'].shape[1]//nstack
+    action_sz    =   path['actions'].shape[1]//nstack
+    
+    dynamics            =   Dynamics((state_sz, ), (action_sz,), nstack, False)
+    checkpoint  =   torch.load(fold +'/params_high.pkl')
+    dynamics.load_state_dict(checkpoint['model_state_dict'])
+    dynamics.mean_input =   checkpoint['mean_input']
+    dynamics.std_input  =   checkpoint['std_input']
+    dynamics.epsilon    =   checkpoint['epsilon']
+    dynamics.to(device)
+    
+    set_trace()
+    matrix  =   SanityCheck.get_errors_matrixes_from_path(path, action_sz, state_sz, horizon, nstack, dynamics, device)
+    
+    fig, axs = plt.subplots(2,1, figsize=(12, 8))
+
+    fig, axs[1]    =   plot_error_map(matrix, 1250, _vmax=20, fig=fig, ax=axs[1])
+    
+    pos_otime       =    get_positions_otime(fold, id_ex, list_paths=[ipath])
+    x_time          =   pos_otime[0]['x']
+    t_              =   pos_otime[0]['t']
+    axs[0].plot(t_, x_time)
+
+    plt.show()
+
+#sanity_check_path('./data/sample42', '1', 12)
+
+plot_pos_over_time('./data/sample40', '13', list_paths=[0,1,2,3,4,5,6])

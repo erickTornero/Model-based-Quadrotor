@@ -9,6 +9,7 @@ def plot_loss_per_iteration(tr_loss, val_loss, save_path):
     plt.legend(['Training loss', 'Validation Loss'])
 
     plt.savefig(save_path)
+    plt.close()
 
 
 def plot_scatter_positions(data, index_start_pos, save_path=None):
