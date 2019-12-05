@@ -41,3 +41,7 @@ Here, we show trajectory followed by quadrotor in a *Circle* trajectory
 In the following *gif* we show both in *Point* Trajectory, Left: **Fault-Free Case**, Right: **Fault-M1 Case** 
 
 ![](./showimages/join_ffree_fault.gif)
+
+Left Fault-free (Blue), Fault case (Yellow) in Helicoid & Vertical-Sin paths
+
+![](./showimages/helicoid_sinvertical.gif)
