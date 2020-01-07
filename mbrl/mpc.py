@@ -84,7 +84,7 @@ class RandomShooter:
             # must
             next_obs    =   self.dynamics.predict_next_obs(obs_flat, self.device)
             # must return in torch
-            rewards     =   self.env.reward(next_obs)
+            rewards     =   self.env.reward(next_obs, actions[t])
             returns     =   returns + self.discount**t*rewards
 
             self.batch_as.slide_state_stack(next_obs)

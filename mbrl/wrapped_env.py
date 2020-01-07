@@ -49,7 +49,7 @@ class QuadrotorEnv(VREPQuadRotmat):
 
         #print(reward)
         return  reward
-    def distance_reward_torch(self, next_obs):
+    def distance_reward_torch(self, next_obs, actions=None):
         currpos =   next_obs[:, 9:12]
 
         distance    =   torch.sqrt(torch.sum(currpos * currpos, dim=1))
@@ -156,6 +156,8 @@ class QuadrotorEnvAugment(VREPQuadRotmatAugment):
             self.reward = self.roll_pitch_angle_penalized
         elif reward_type == 'type5':
             self.reward = self.roll_pitch_angle_rotyaw_penalized
+        elif reward_type == 'type6':
+            self.reward = self.roll_pitch_angle_rotyaw_input_penalized
         else:
             assert True, 'Error: No valid reward function: example: ("type1")'
     
@@ -289,6 +291,7 @@ class QuadrotorEnvAugment(VREPQuadRotmatAugment):
         #reward_yaw_speed    =   - (yaw_speed * yaw_speed)/(200.0)
         #reward_yaw_speed    =   - (yaw_speed * yaw_speed)/(400.0)
         reward_yaw_speed    =   - (yaw_speed * yaw_speed)/(1000.0)
+        #reward_yaw_speed    =   - torch.abs(-15.0-yaw_speed)/5.0        
         #reward_yaw_speed    =   - (yaw_speed * yaw_speed)/(1500.0)
         #reward_yaw_speed    =   2.0 - (yaw_speed * yaw_speed)/100.0
 
@@ -296,6 +299,16 @@ class QuadrotorEnvAugment(VREPQuadRotmatAugment):
         reward_distance     =   self.distance_reward_torch(next_obs)
 
         return reward_distance + reward_angle + reward_yaw_speed
+    
+    def roll_pitch_angle_rotyaw_input_penalized(self, next_obs, acts):
+        """ 
+            reward_type 6
+            Penalization of inputs [0-0.5] of penalization
+        """ 
+
+        rp      =   self.roll_pitch_angle_rotyaw_penalized(next_obs)
+        act_pen =   -5e-5*torch.sum(acts * acts, dim=1)
+        return rp + act_pen
 
     def set_targetpos(self, tpos:np.ndarray):
         assert tpos.shape[0]    ==  3
