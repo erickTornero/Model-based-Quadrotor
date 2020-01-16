@@ -158,6 +158,10 @@ class QuadrotorEnvAugment(VREPQuadRotmatAugment):
             self.reward = self.roll_pitch_angle_rotyaw_penalized
         elif reward_type == 'type6':
             self.reward = self.roll_pitch_angle_rotyaw_input_penalized
+        elif reward_type == 'type7':
+            self.reward = self.pos_rot_penalization
+        elif reward_type == 'type8':
+            self.reward = self.pos_roll_pitch_rot_penalization
         else:
             assert True, 'Error: No valid reward function: example: ("type1")'
     
@@ -309,6 +313,42 @@ class QuadrotorEnvAugment(VREPQuadRotmatAugment):
         rp      =   self.roll_pitch_angle_rotyaw_penalized(next_obs)
         act_pen =   -5e-5*torch.sum(acts * acts, dim=1)
         return rp + act_pen
+    
+    def pos_rot_penalization(self, next_obs, acts):
+        """
+            reward_type 7
+            &   Position penalization
+            &   rotation speed penalization, in 3 axes
+        """
+        index_start_rot         =   15
+        #constant_roll_pitch_rot =   -1e-1
+        #constant_yaw_rot        =   -1e-2
+        constant_roll_pitch_rot =   -1e-1
+        constant_yaw_rot        =   -1e-2
+        reward_distance         =   2 * self.distance_reward_torch(next_obs)
+        rotation_speeds         =   next_obs[:, index_start_rot:index_start_rot + 3]
+        rotation_speeds         =   rotation_speeds * rotation_speeds
+        reward_speeds           =   constant_roll_pitch_rot * torch.sum(rotation_speeds[:,:2], axis=1) + constant_yaw_rot * rotation_speeds[:,-1]
+
+        return reward_distance + reward_speeds
+    
+    def pos_roll_pitch_rot_penalization(self, next_obs, acts):
+        """ 
+            reward_type 8
+            &   Penalization of position,
+            &   rotation roll-pitch penalization
+        """
+        index_start_rot         =   15
+        constant_roll_pitch_rot =   -1e-2
+        constant_yaw_rot        =   -1e-3
+        #constant_roll_pitch_rot =   -1e-1
+        #constant_yaw_rot        =   0.0
+        reward_distance         =   2 * self.distance_reward_torch(next_obs)
+        rotation_speeds         =   next_obs[:, index_start_rot:index_start_rot + 3]
+        rotation_speeds         =   rotation_speeds * rotation_speeds
+        reward_speeds           =   constant_roll_pitch_rot * torch.sum(rotation_speeds[:,:2], axis=1) + constant_yaw_rot * rotation_speeds[:,-1]
+
+        return reward_distance + reward_speeds
 
     def set_targetpos(self, tpos:np.ndarray):
         assert tpos.shape[0]    ==  3

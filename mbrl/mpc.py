@@ -91,6 +91,94 @@ class RandomShooter:
 
         return np.asarray(action_c[torch.argmax(returns).item()].to('cpu'))
 
+    def get_action_torch_less_distance(self, obs_, J):
+        """
+            Description:    Uses RS (Random Shooting) to get best J actions,
+            from these action apply a metric that relies on the less variance
+            from previous action
+        """
+        obs_np, acts_np =   obs_.get()
+        last_action     =   obs_.get_last_action()
+        self.batch_as.restart(torch.tensor(obs_np, dtype=torch.float32, device=self.device), torch.tensor(acts_np, dtype=torch.float32, device=self.device))
+        h   =   self.horizon
+        c   =   self.candidates
+        returns =   torch.zeros((c,), dtype=torch.float32, device=self.device)
+
+        #must_change to torch
+        actions =   self.get_random_actions_torch(h * c).reshape((h, c) + self.act_space.shape)
+
+        actions =   actions.reshape((h, c, self.act_space.shape[0]))
+
+        for t in range(h):
+            if t == 0:
+                action_c    =   actions[t]
+            self.batch_as.slide_action_stack(actions[t])
+            obs_flat    =   self.batch_as.get()
+
+            obs_flat    =   self.normalize_torch(obs_flat)
+
+            next_obs    =   self.dynamics.predict_next_obs(obs_flat, self.device)
+            rewards     =   self.env.reward(next_obs, actions[t])
+            returns     =   returns + self.discount**t*rewards
+
+            self.batch_as.slide_state_stack(next_obs)
+
+        #set_trace()
+        best_indexes    =   torch.argsort(returns)[-J:]
+        best_actions    =   action_c.index_select(0, best_indexes)
+        # compute metric
+        torch_last_action   =   torch.tensor(last_action, dtype=torch.float32, device=self.device)
+        best_actions        =   best_actions - torch_last_action
+        best_actions        =   torch.sum(best_actions * best_actions, dim=1)
+
+        best_last_index     =   best_indexes[torch.argmin(best_actions)]
+        best_action =   np.asarray(action_c[best_last_index].to('cpu'))
+        
+        return best_action
+
+    def get_action_torch_less_past_future_distance(self, obs_, J):
+        obs_np, acts_np =   obs_.get()
+        last_action     =   obs_.get_last_action()
+        self.batch_as.restart(torch.tensor(obs_np, dtype=torch.float32, device=self.device), torch.tensor(acts_np, dtype=torch.float32, device=self.device))
+        h   =   self.horizon
+        c   =   self.candidates
+        returns =   torch.zeros((c,), dtype=torch.float32, device=self.device)
+
+        #must_change to torch
+        actions =   self.get_random_actions_torch(h * c).reshape((h, c) + self.act_space.shape)
+
+        actions =   actions.reshape((h, c, self.act_space.shape[0]))
+
+        for t in range(h):
+            if t == 0:
+                action_c    =   actions[t]
+            self.batch_as.slide_action_stack(actions[t])
+            obs_flat    =   self.batch_as.get()
+
+            obs_flat    =   self.normalize_torch(obs_flat)
+
+            next_obs    =   self.dynamics.predict_next_obs(obs_flat, self.device)
+            rewards     =   self.env.reward(next_obs, actions[t])
+            returns     =   returns + self.discount**t*rewards
+
+            self.batch_as.slide_state_stack(next_obs)
+
+        #set_trace()
+        best_indexes    =   torch.argsort(returns)[-J:]
+        best_h_actions  =   actions.index_select(1, best_indexes)
+        prev_actions    =   best_h_actions[1:, :, :]
+        best_actions    =   action_c.index_select(0, best_indexes)
+        # compute metric
+        torch_last_action   =   torch.tensor(last_action, dtype=torch.float32, device=self.device)
+        best_actions        =   best_actions - torch_last_action
+        best_actions        =   torch.sum(best_actions * best_actions, dim=1)
+
+        best_last_index     =   best_indexes[torch.argmin(best_actions)]
+        best_action =   np.asarray(action_c[best_last_index].to('cpu'))
+        
+        return best_action
+
+
     def get_action_CEM(self, obs_, J:int, M:int, alpha:int):
         """
             Planning with Random Shooting with Cross Entropy Method for a single Environment

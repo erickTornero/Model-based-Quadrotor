@@ -40,7 +40,7 @@ from tensorboardX import SummaryWriter
 
 config  =   {
     # General parameters #
-    "id_executor"           :   'sample50',
+    "id_executor"           :   'sample68',
     "n_iterations"          :   256,
 
     # MPC Controller - Random Shooting #
@@ -54,21 +54,22 @@ config  =   {
     "env_name"              :   'QuadrotorEnvAugment',
     "max_path_length"       :   250,
     "total_tsteps_per_run"  :   10000,
-    "reward_type"           :   'type5',
-    "crippled_rotor"        :   None,
+    "reward_type"           :   'type8',
+    "crippled_rotor"        :   1,
     "time_step_size"        :   0.050,  #seconds
     # Training Parameters #
     
     "batch_size"            :   500,
     "n_epochs"              :   100,
     "validation_percent"    :   0.2,
-    "learning_rate"         :   1e-4,
+    "learning_rate"         :   1e-3,
+    "acumm_dataset"         :   True,
 
     # Dynamics parameters #
     "sthocastic"            :   False,
     "hidden_layers"         :   (250,250,250),
     "activation_function"   :   'tanh',
-    "nstack"                :   1
+    "nstack"                :   2
 }
 """*****************************************
     Hyper-Parameters Settings
@@ -126,6 +127,9 @@ mean_reward_maximum =   0.0
 
 print(dyn)
 
+data_features   =   None
+data_targets    =   None
+
 for n_it in range(1, config['n_iterations']+1):
     print('============================================')
     print('\t\t Iteration {} \t\t\t'.format(n_it))
@@ -152,11 +156,18 @@ for n_it in range(1, config['n_iterations']+1):
             }, os.path.join(save_path, 'params_high.pkl'))
         #torch.save(dyn.state_dict(), os.path.join(save_path, 'params_high.pkl'))
     #set_trace()
-    tr_loss, vl_loss = trainer.fit(data_x, delta_obs)
+    if config['acumm_dataset'] and data_features is not None:
+        data_features   =   np.concatenate((data_features, data_x), axis=0)
+        data_targets    =   np.concatenate((data_targets, delta_obs), axis=0)
+    else: 
+        data_features   =   data_x
+        data_targets    =   delta_obs
+    
+    tr_loss, vl_loss = trainer.fit(data_features, data_targets)
     print('-------------Info {}-------------'.format(n_it))
     rolls_info      =   vecenv.get_reset_nrollouts()
     print('Rolls per env> {}, total rollouts {}'.format(rolls_info, sum(rolls_info)))
-    print('total time steps: \t{}'.format(actions.shape[0]))
+    print('total time steps: \t{}'.format(data_features.shape[0]))
     print('Reward mean: \t\t{}'.format(mean_reward))
     print('Reward  std: \t\t{}'.format(np.std(total_rewards)))
     print('Reward  min: \t\t{}'.format(np.min(total_rewards)))
